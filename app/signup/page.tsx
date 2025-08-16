@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft } from "lucide-react"
 import { Footer } from "@/components/footer"
+import { toast } from "sonner"
 
 const subIndustries = ["PR", "Marketing", "AdTech", "Communications", "Media Buying", "Media Agencies"]
 
@@ -142,27 +143,59 @@ export default function SignUpPage() {
     return null
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Store form data (in a real app, this would be sent to your backend)
-    console.log("Form submitted:", {
-      ...formData,
-      subIndustries: selectedSubIndustries,
-      financeSubIndustries: selectedFinanceSubIndustries,
-      additionalPlaces: additionalPlaces,
-    })
+    setIsSubmitting(true)
+    setSubmitError(null)
 
-    // Create URL params to pass user data to payment page
-    const params = new URLSearchParams({
-      city: formData.location,
-      subIndustries: selectedSubIndustries.join(", "),
-      financeSubIndustries: selectedFinanceSubIndustries.join(", "),
-      additionalPlaces: additionalPlaces.join(", "),
-      slackEmail: formData.slackEmail,
-    })
+    try {
+      // Send data to backend
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          subIndustries: selectedSubIndustries,
+          financeSubIndustries: selectedFinanceSubIndustries,
+          additionalPlaces: additionalPlaces,
+        }),
+      })
 
-    // Redirect to payment page with user data
-    window.location.href = `/payment?${params.toString()}`
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Signup failed')
+      }
+
+      // Create URL params to pass user data to payment page
+      const params = new URLSearchParams({
+        userId: result.userId,
+        city: formData.location,
+        subIndustries: selectedSubIndustries.join(", "),
+        financeSubIndustries: selectedFinanceSubIndustries.join(", "),
+        additionalPlaces: additionalPlaces.join(", "),
+        slackEmail: formData.slackEmail,
+      })
+
+      // Show success message
+      toast.success("Account created successfully! Redirecting to payment...")
+      
+      // Redirect to payment page with user data
+      window.location.href = `/payment?${params.toString()}`
+
+    } catch (error) {
+      console.error('Signup error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Signup failed. Please try again.'
+      setSubmitError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const totalPrice = calculateTotalPrice()
@@ -470,10 +503,19 @@ export default function SignUpPage() {
                     </div>
                   )}
 
+                  {/* Show error messages */}
+                  {submitError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <h4 className="font-medium text-red-800 mb-2">Signup Error</h4>
+                      <p className="text-sm text-red-700">{submitError}</p>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90 text-white py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={
+                      isSubmitting ||
                       !formData.name ||
                       !formData.company ||
                       !formData.linkedin ||
@@ -483,15 +525,17 @@ export default function SignUpPage() {
                       !formData.slackEmail
                     }
                   >
-                    {!formData.name ||
-                    !formData.company ||
-                    !formData.linkedin ||
-                    !formData.birthday ||
-                    !formData.location ||
-                    !formData.paymentPlan ||
-                    !formData.slackEmail
-                      ? "Complete Required Fields"
-                      : `Complete Membership Purchase${totalPrice ? ` - ${formData.paymentPlan === "monthly" ? `$${totalPrice.monthly}/month` : `$${totalPrice.annual}/year`}` : ""}`}
+                    {isSubmitting 
+                      ? "Creating Account..." 
+                      : !formData.name ||
+                        !formData.company ||
+                        !formData.linkedin ||
+                        !formData.birthday ||
+                        !formData.location ||
+                        !formData.paymentPlan ||
+                        !formData.slackEmail
+                        ? "Complete Required Fields"
+                        : `Complete Membership Purchase${totalPrice ? ` - ${formData.paymentPlan === "monthly" ? `$${totalPrice.monthly}/month` : `$${totalPrice.annual}/year`}` : ""}`}
                   </Button>
                 </div>
               </form>
