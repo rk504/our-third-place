@@ -27,9 +27,9 @@ export default function AuthSignupPage() {
     location: decodeURIComponent(searchParams.get('location') || ''),
     paymentPlan: decodeURIComponent(searchParams.get('paymentPlan') || ''),
     slackEmail: decodeURIComponent(searchParams.get('slackEmail') || ''),
-    subIndustries: decodeURIComponent(searchParams.get('subIndustries') || ''),
+    subIndustries: decodeURIComponent(searchParams.get('subIndustries') || ''), // TODO: add this functionality back in (removed for dev testing)
     financeSubIndustries: decodeURIComponent(searchParams.get('financeSubIndustries') || ''),
-    additionalPlaces: decodeURIComponent(searchParams.get('additionalPlaces') || '')
+    additionalPlaces: decodeURIComponent(searchParams.get('additionalPlaces') || '') 
   }
 
   const [password, setPassword] = useState("")
