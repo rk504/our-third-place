@@ -183,10 +183,22 @@ export default function SignUpPage() {
       })
 
       // Show success message
-      toast.success("Account created successfully! Redirecting to payment...")
+      toast.success("Form submitted successfully! Redirecting to account creation...")
       
-      // Redirect to payment page with user data
-      window.location.href = `/payment?${params.toString()}`
+      // Redirect to the auth signup page with user data
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl
+      } else {
+        // Fallback to payment page if no redirect URL
+        const params = new URLSearchParams({
+          city: formData.location,
+          subIndustries: selectedSubIndustries.join(", "),
+          financeSubIndustries: selectedFinanceSubIndustries.join(", "),
+          additionalPlaces: additionalPlaces.join(", "),
+          slackEmail: formData.slackEmail,
+        })
+        window.location.href = `/payment?${params.toString()}`
+      }
 
     } catch (error) {
       console.error('Signup error:', error)

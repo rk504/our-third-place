@@ -24,70 +24,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: slackEmail,
-      email_confirm: true,
-      user_metadata: { 
-        full_name: name,
-        company: company
-      }
+    // For public signup, we'll store the data temporarily and redirect to a signup page
+    // The user will create their account there, then we'll link it to this data
+    
+    // Store signup data in a temporary table or session
+    // For now, we'll redirect to a signup page with the data as URL params
+    
+    // Create URL params to pass user data to signup page
+    const params = new URLSearchParams({
+      name: encodeURIComponent(name),
+      company: encodeURIComponent(company),
+      linkedin: encodeURIComponent(linkedin),
+      instagram: encodeURIComponent(instagram || ''),
+      birthday: encodeURIComponent(birthday),
+      location: encodeURIComponent(location),
+      paymentPlan: encodeURIComponent(paymentPlan),
+      slackEmail: encodeURIComponent(slackEmail),
+      subIndustries: encodeURIComponent(subIndustries.join(', ')),
+      financeSubIndustries: encodeURIComponent(financeSubIndustries.join(', ')),
+      additionalPlaces: encodeURIComponent(additionalPlaces.join(', '))
     })
-
-    if (authError) {
-      console.error("Auth creation error:", authError)
-      return NextResponse.json({ error: "Failed to create user account" }, { status: 500 })
-    }
-
-    // Create profile
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        id: authData.user.id,
-        email: slackEmail,
-        full_name: name,
-        company: company,
-        linkedin_url: linkedin,
-        instagram_handle: instagram,
-        birthday: birthday,
-        city: location,
-        role: "member",
-        sub_industries: subIndustries,
-        finance_sub_industries: financeSubIndustries,
-        additional_places: additionalPlaces
-      })
-
-    if (profileError) {
-      console.error("Profile creation error:", profileError)
-      // Clean up auth user if profile creation fails
-      await supabase.auth.admin.deleteUser(authData.user.id)
-      return NextResponse.json({ error: "Failed to create profile" }, { status: 500 })
-    }
-
-    // Create membership
-    const { error: membershipError } = await supabase
-      .from("memberships")
-      .insert({
-        user_id: authData.user.id,
-        tier: paymentPlan,
-        status: "pending", // Will be updated to "active" after payment
-        primary_location: location,
-        additional_places: additionalPlaces,
-        payment_plan: paymentPlan
-      })
-
-    if (membershipError) {
-      console.error("Membership creation error:", membershipError)
-      // Clean up if membership creation fails
-      await supabase.auth.admin.deleteUser(authData.user.id)
-      await supabase.from("profiles").delete().eq("id", authData.user.id)
-      return NextResponse.json({ error: "Failed to create membership" }, { status: 500 })
-    }
 
     return NextResponse.json({ 
       success: true, 
-      userId: authData.user.id,
-      message: "User account created successfully" 
+      redirectUrl: `/auth/signup?${params.toString()}`,
+      message: "Redirecting to account creation" 
     })
 
   } catch (error) {
