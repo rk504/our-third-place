@@ -36,7 +36,7 @@ export default function LoginPage() {
         email,
         options: {
           shouldCreateUser: false,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       })
       if (error) {
