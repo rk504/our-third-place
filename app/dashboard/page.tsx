@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -42,6 +44,17 @@ import {
   Briefcase,
 } from "lucide-react"
 import { Footer } from "@/components/footer"
+
+type Profile = { // real user data will be stored in the profiles table
+  user_id: string;
+  full_name: string | null;
+  city: string | null;
+  bio: string | null;
+  linkedin_url: string | null;
+  company?: string | null; // only if this column exists
+  title?: string | null;   // only if this column exists
+  avatar_url?: string | null; // if you store this
+};
 
 // Mock user data
 const userData = {
@@ -288,11 +301,47 @@ const connectOptions = [
 ]
 
 export default function DashboardPage() {
+  const supabase = createSupabaseBrowserClient();
+  const router = useRouter();
+  const [session, setSession] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [showReferralModal, setShowReferralModal] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+      setSession(session);
+
+      // Fetch profile
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching profile:", error);
+      } else {
+        setProfile(profile);
+      }
+      setLoading(false);
+    };
+
+    getSession();
+  }, [supabase, router]);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)

@@ -70,6 +70,9 @@ export default function HomePage() {
               <Link href="/dashboard" className="text-gray-700 hover:text-[#1b1f2c] transition-colors">
                 Member Portal
               </Link>
+              <Link href="/login" className="text-gray-700 hover:text-[#1b1f2c] transition-colors">
+                Login
+              </Link>
             </nav>
 
             {/* Mobile Menu Button */}
