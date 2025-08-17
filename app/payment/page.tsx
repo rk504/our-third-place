@@ -103,7 +103,7 @@ export default function PaymentPage() {
     e.preventDefault()
     setIsProcessing(true)
 
-    // Simulate payment processing
+    // Simulate payment processing - this is where we would call the payment API
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // In a real app, you would process the payment here
