@@ -1,4 +1,5 @@
 "use client"
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -10,8 +11,17 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { Suspense } from "react";
 
 export default function AuthSignupPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Loading…</div>}>
+      <AuthSignupPageContent />
+    </Suspense>
+  )
+}
+
+function AuthSignupPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
