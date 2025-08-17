@@ -7,7 +7,10 @@ export default async function Page() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  console.log("Dashboard: User ID:", user.id)
+  console.log("=== DASHBOARD DEBUG ===")
+  console.log("User ID:", user.id)
+  console.log("User Email:", user.email)
+  console.log("User Created At:", user.created_at)
 
   // Ensure a profile row exists (safe upsert) - using correct schema
   const { error: upsertError } = await supabase
@@ -45,6 +48,14 @@ export default async function Page() {
 
   console.log("Profile data:", profile)
   console.log("Profile error:", profileError)
+  
+  if (profile) {
+    console.log("✅ Found profile for user:", profile.user_id)
+    console.log("Profile name:", profile.full_name)
+    console.log("Profile email:", profile.email)
+  } else {
+    console.log("❌ No profile found for user:", user.id)
+  }
 
   // Fetch membership information using your actual schema
   const { data: membership, error: membershipError } = await supabase

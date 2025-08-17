@@ -106,7 +106,6 @@ export default function AuthSignupPage() {
             membership_tier: formData.paymentPlan,
             instagram_handle: formData.instagram,
             birthday: formData.birthday,
-            city: formData.location,
             role: "member"
           })
 
