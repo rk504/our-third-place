@@ -24,12 +24,9 @@ import {
 type Profile = {
   user_id: string
   full_name: string | null
-  city: string | null
   bio: string | null
   linkedin_url: string | null
   company?: string | null
-  title?: string | null
-  avatar_url?: string | null
   role?: string | null
   membership_tier?: string | null
   instagram_handle?: string | null
@@ -38,6 +35,7 @@ type Profile = {
   additional_places?: string[] | null
   sub_industries?: string[] | null
   finance_sub_industries?: string[] | null
+  email?: string | null
 } | null
 
 type Membership = {
@@ -53,13 +51,10 @@ type Event = {
   id: number
   title: string
   description?: string
-  event_date: string
-  event_time?: string
-  location: string
-  max_attendees?: number
-  price_range?: string
-  industry?: string
-  sub_industry?: string
+  starts_at: string
+  ends_at?: string
+  capacity?: number
+  status?: string
 }
 
 type EventRegistration = {
@@ -138,14 +133,19 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
     }
   }
 
-  const formatEventDate = (dateString: string, timeString?: string) => {
-    const date = new Date(dateString)
+  const formatEventDate = (startsAt: string) => {
+    const date = new Date(startsAt)
     const dateFormatted = date.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric'
     })
-    return timeString ? `${dateFormatted} at ${timeString}` : dateFormatted
+    const timeFormatted = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+    return `${dateFormatted} at ${timeFormatted}`
   }
 
   // Generate personalized welcome message
@@ -170,7 +170,6 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
 
   const getPersonalizedSubtext = () => {
     const parts = []
-    if (profile?.city) parts.push(`Based in ${profile.city}`)
     if (memberSince) parts.push(`Member since ${memberSince}`)
     if (totalEventsAttended > 0) parts.push(`${totalEventsAttended} event${totalEventsAttended > 1 ? 's' : ''} attended`)
     
@@ -302,7 +301,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
                     <Image
-                      src={profile?.avatar_url || "/images/user-headshot.jpg"}
+                      src="/images/user-headshot.jpg"
                       alt="Avatar"
                       width={64}
                       height={64}
@@ -311,20 +310,14 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                     <div className="flex-1">
                       <p className="text-lg font-semibold text-[#1b1f2c]">{displayName}</p>
                       <p className="text-sm text-gray-600">
-                        {[profile?.title, profile?.company].filter(Boolean).join(" • ") || "—"}
+                        {profile?.company || "—"}
                       </p>
                     </div>
                   </div>
                   
                   <div className="space-y-2">
                     <p className="text-sm text-gray-600">{profile?.bio || "Add a short bio to complete your profile."}</p>
-                    
-                    {profile?.city && (
-                      <div className="flex items-center text-sm text-gray-600">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        {profile.city}
-                      </div>
-                    )}
+
                     
                     <div className="flex items-center space-x-2">
                       {profile?.linkedin_url && (
@@ -468,16 +461,16 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                             <Badge className="bg-green-100 text-green-800">{registration.status}</Badge>
                           </div>
                           <div className="space-y-1 text-sm text-gray-600">
-                            {event?.event_date && (
+                            {event?.starts_at && (
                               <div className="flex items-center">
                                 <Clock className="w-4 h-4 mr-2" />
-                                {formatEventDate(event.event_date, event.event_time)}
+                                {formatEventDate(event.starts_at)}
                               </div>
                             )}
-                            {event?.location && (
+                            {event?.capacity && (
                               <div className="flex items-center">
-                                <MapPin className="w-4 h-4 mr-2" />
-                                {event.location}
+                                <Users className="w-4 h-4 mr-2" />
+                                Capacity: {event.capacity}
                               </div>
                             )}
                             {!event && (
@@ -529,8 +522,8 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                               {event?.title ? `Attended "${event.title}"` : `Event Registration #${registration.id}`}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {event?.event_date 
-                                ? `${formatEventDate(event.event_date)} • ${event.location || 'Location TBD'}` 
+                              {event?.starts_at 
+                                ? formatEventDate(event.starts_at)
                                 : `Registered on ${new Date(registration.created_at).toLocaleDateString()}`
                               }
                             </p>
