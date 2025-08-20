@@ -16,7 +16,6 @@ import {
   Building2,
   Instagram,
   Linkedin,
-  Gift,
   TrendingUp,
   ChevronRight
 } from "lucide-react"
@@ -110,20 +109,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
       })()
     : false
 
-  // Calculate achievements
-  const getAchievements = () => {
-    const achievements = []
-    if (totalEventsAttended >= 1) achievements.push({ name: "First Event", icon: "🎉", description: "Attended your first event!" })
-    if (totalEventsAttended >= 5) achievements.push({ name: "Social Butterfly", icon: "🦋", description: "Attended 5+ events" })
-    if (totalEventsAttended >= 10) achievements.push({ name: "Networking Pro", icon: "🏆", description: "Attended 10+ events" })
-    if (daysSinceMember >= 30) achievements.push({ name: "30-Day Member", icon: "📅", description: "Active for 30+ days" })
-    if (daysSinceMember >= 365) achievements.push({ name: "Anniversary", icon: "🎂", description: "One year member!" })
-    if (profile?.bio && profile.bio.length > 50) achievements.push({ name: "Storyteller", icon: "📝", description: "Complete profile bio" })
-    if (profile?.linkedin_url && profile?.instagram_handle) achievements.push({ name: "Connected", icon: "🔗", description: "All social links added" })
-    return achievements
-  }
 
-  const achievements = getAchievements()
 
   const getMembershipBadgeColor = (tier?: string) => {
     switch (tier?.toLowerCase()) {
@@ -175,9 +161,6 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
     
     const baseText = parts.length > 0 ? parts.join(" • ") + ". " : ""
     
-    if (achievements.length > 0) {
-      return baseText + `You've earned ${achievements.length} achievement${achievements.length > 1 ? 's' : ''}! 🌟`
-    }
     return baseText + "Let's supercharge your network! 🚀"
   }
 
@@ -217,7 +200,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -267,20 +250,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-orange-600">Achievements</p>
-                  <p className="text-2xl font-bold text-orange-900">{achievements.length}</p>
-                  <p className="text-xs text-orange-600 mt-1">
-                    {achievements.length >= 5 ? "Superstar! ⭐" : achievements.length >= 3 ? "Rising star! 🌟" : "Getting started! 🚀"}
-                  </p>
-                </div>
-                <Gift className="w-8 h-8 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -367,37 +337,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
               </CardContent>
             </Card>
 
-            {/* Achievements Section */}
-            {achievements.length > 0 && (
-              <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Trophy className="w-5 h-5 text-yellow-600" />
-                    <span className="text-yellow-800">Your Achievements</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {achievements.map((achievement, index) => (
-                      <div key={index} className="flex items-center space-x-3 p-3 bg-white/70 rounded-lg border border-yellow-100">
-                        <span className="text-2xl">{achievement.icon}</span>
-                        <div className="flex-1">
-                          <p className="font-medium text-yellow-900">{achievement.name}</p>
-                          <p className="text-sm text-yellow-700">{achievement.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {achievements.length < 7 && (
-                    <div className="mt-4 p-3 bg-yellow-100 rounded-lg">
-                      <p className="text-sm text-yellow-800 font-medium">
-                        🎯 Keep networking to unlock more achievements!
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+
 
             {/* Quick Actions */}
             <Card>
@@ -619,7 +559,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <Gift className="w-5 h-5" />
+                    <Star className="w-5 h-5" />
                     <span>Membership Details</span>
                   </CardTitle>
                 </CardHeader>
