@@ -37,9 +37,10 @@ function AuthSignupPageContent() {
     location: decodeURIComponent(searchParams.get('location') || ''),
     paymentPlan: decodeURIComponent(searchParams.get('paymentPlan') || ''),
     slackEmail: decodeURIComponent(searchParams.get('slackEmail') || ''),
-    subIndustries: decodeURIComponent(searchParams.get('subIndustries') || ''), // TODO: add this functionality back in (removed for dev testing)
+    subIndustries: decodeURIComponent(searchParams.get('subIndustries') || ''),
     financeSubIndustries: decodeURIComponent(searchParams.get('financeSubIndustries') || ''),
-    additionalPlaces: decodeURIComponent(searchParams.get('additionalPlaces') || '') 
+    additionalPlaces: decodeURIComponent(searchParams.get('additionalPlaces') || ''),
+    howDidYouHear: decodeURIComponent(searchParams.get('howDidYouHear') || '')
   }
 
   const [password, setPassword] = useState("")
@@ -104,6 +105,11 @@ function AuthSignupPageContent() {
       }
 
       if (authData.user) {
+        // Convert string arrays back to arrays
+        const subIndustriesArray = formData.subIndustries ? formData.subIndustries.split(', ').filter(item => item.trim()) : []
+        const financeSubIndustriesArray = formData.financeSubIndustries ? formData.financeSubIndustries.split(', ').filter(item => item.trim()) : []
+        const additionalPlacesArray = formData.additionalPlaces ? formData.additionalPlaces.split(', ').filter(item => item.trim()) : []
+
         // Create profile
         const { error: profileError } = await supabase
           .from("profiles")
@@ -112,11 +118,16 @@ function AuthSignupPageContent() {
             email: formData.slackEmail,
             full_name: formData.name,
             company: formData.company,
+            city: formData.location,
             linkedin_url: formData.linkedin,
             membership_tier: formData.paymentPlan,
             instagram_handle: formData.instagram,
             birthday: formData.birthday,
-            role: "member"
+            role: "member",
+            sub_industries: subIndustriesArray,
+            finance_sub_industries: financeSubIndustriesArray,
+            additional_places: additionalPlacesArray,
+            howdidyouhear: formData.howDidYouHear
           })
 
         if (profileError) throw profileError
@@ -129,11 +140,17 @@ function AuthSignupPageContent() {
             tier: formData.paymentPlan,
             status: "pending",
             primary_location: formData.location,
+            additional_places: additionalPlacesArray
           })
 
         if (membershipError) throw membershipError
 
         toast.success("Account created successfully! Please check your email to verify your account.")
+        
+        console.log("=== SIGNUP SUCCESS ===")
+        console.log("User created:", authData.user.id)
+        console.log("Profile created successfully")
+        console.log("Membership created successfully")
         
         // Redirect to payment page
         const params = new URLSearchParams({
@@ -143,9 +160,13 @@ function AuthSignupPageContent() {
           financeSubIndustries: formData.financeSubIndustries,
           additionalPlaces: formData.additionalPlaces,
           slackEmail: formData.slackEmail,
+          howDidYouHear: formData.howDidYouHear,
         })
         
-        router.push(`/payment?${params.toString()}`)
+        const paymentUrl = `/payment?${params.toString()}`
+        console.log("Redirecting to:", paymentUrl)
+        
+        router.push(paymentUrl)
       }
 
     } catch (error) {

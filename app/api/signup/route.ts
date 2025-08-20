@@ -5,6 +5,10 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient()
     
+    const requestBody = await request.json()
+    console.log("=== API SIGNUP RECEIVED ===")
+    console.log("Request body:", requestBody)
+    
     const {
       name,
       company,
@@ -16,8 +20,9 @@ export async function POST(request: NextRequest) {
       slackEmail,
       subIndustries,
       financeSubIndustries,
-      additionalPlaces
-    } = await request.json()
+      additionalPlaces,
+      howDidYouHear
+    } = requestBody
 
     // Validate required fields
     if (!name || !company || !linkedin || !birthday || !location || !paymentPlan || !slackEmail) {
@@ -42,12 +47,16 @@ export async function POST(request: NextRequest) {
       slackEmail: encodeURIComponent(slackEmail),
       subIndustries: encodeURIComponent(subIndustries.join(', ')),
       financeSubIndustries: encodeURIComponent(financeSubIndustries.join(', ')),
-      additionalPlaces: encodeURIComponent(additionalPlaces.join(', '))
+      additionalPlaces: encodeURIComponent(additionalPlaces.join(', ')),
+      howDidYouHear: encodeURIComponent(howDidYouHear || '')
     })
 
+    const redirectUrl = `/auth/signup?${params.toString()}`
+    console.log("API returning redirect URL:", redirectUrl)
+    
     return NextResponse.json({ 
       success: true, 
-      redirectUrl: `/auth/signup?${params.toString()}`,
+      redirectUrl: redirectUrl,
       message: "Redirecting to account creation" 
     })
 

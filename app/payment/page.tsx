@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -20,8 +20,13 @@ const discountCodes = {
   FRIEND25: { type: "fixed", value: 25, description: "$25 friend referral discount" },
 }
 
-export default function PaymentPage() {
+function PaymentPageContent() {
   const searchParams = useSearchParams()
+  
+  // Debug: Log all URL parameters
+  console.log("=== PAYMENT PAGE LOADED ===")
+  console.log("All URL params:", Object.fromEntries(searchParams.entries()))
+  
   const [paymentData, setPaymentData] = useState({
     cardNumber: "",
     expiryDate: "",
@@ -559,5 +564,13 @@ export default function PaymentPage() {
       )}
       <Footer />
     </div>
+  )
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Loading payment page...</div>}>
+      <PaymentPageContent />
+    </Suspense>
   )
 }

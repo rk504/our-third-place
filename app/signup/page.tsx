@@ -86,6 +86,7 @@ export default function SignUpPage() {
     location: "",
     paymentPlan: "",
     slackEmail: "",
+    howDidYouHear: "",
   })
 
   const handleSubIndustryChange = (industry: string, checked: boolean) => {
@@ -147,48 +148,70 @@ export default function SignUpPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("🚀 FORM SUBMIT TRIGGERED!")
     e.preventDefault()
     setIsSubmitting(true)
     setSubmitError(null)
 
+    console.log("=== SIGNUP FORM SUBMISSION ===")
+    console.log("Form data:", formData)
+    console.log("Sub industries:", selectedSubIndustries)
+    console.log("Finance sub industries:", selectedFinanceSubIndustries)
+    console.log("Additional places:", additionalPlaces)
+    
+    // Check if button should be disabled
+    const isButtonDisabled = !formData.name || !formData.company || !formData.linkedin || !formData.birthday || !formData.location || !formData.paymentPlan || !formData.slackEmail
+    console.log("Button should be disabled:", isButtonDisabled)
+    console.log("Missing fields:", {
+      name: !formData.name,
+      company: !formData.company,
+      linkedin: !formData.linkedin,
+      birthday: !formData.birthday,
+      location: !formData.location,
+      paymentPlan: !formData.paymentPlan,
+      slackEmail: !formData.slackEmail
+    })
+
     try {
       // Send data to backend
+      const requestBody = {
+        ...formData,
+        subIndustries: selectedSubIndustries,
+        financeSubIndustries: selectedFinanceSubIndustries,
+        additionalPlaces: additionalPlaces,
+      }
+      
+      console.log("Sending request body:", requestBody)
+      
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          subIndustries: selectedSubIndustries,
-          financeSubIndustries: selectedFinanceSubIndustries,
-          additionalPlaces: additionalPlaces,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const result = await response.json()
+      
+      console.log("API Response:", result)
+      console.log("Response status:", response.status)
 
       if (!response.ok) {
+        console.error("API Error:", result.error)
         throw new Error(result.error || 'Signup failed')
       }
-
-      // Create URL params to pass user data to payment page
-      const params = new URLSearchParams({
-        userId: result.userId,
-        city: formData.location,
-        subIndustries: selectedSubIndustries.join(", "),
-        financeSubIndustries: selectedFinanceSubIndustries.join(", "),
-        additionalPlaces: additionalPlaces.join(", "),
-        slackEmail: formData.slackEmail,
-      })
 
       // Show success message
       toast.success("Form submitted successfully! Redirecting to account creation...")
       
+      console.log("About to redirect to:", result.redirectUrl)
+      
       // Redirect to the auth signup page with user data
       if (result.redirectUrl) {
+        console.log("Using redirectUrl from API:", result.redirectUrl)
         window.location.href = result.redirectUrl
       } else {
+        console.log("No redirectUrl, using fallback")
         // Fallback to payment page if no redirect URL
         const params = new URLSearchParams({
           city: formData.location,
@@ -196,16 +219,26 @@ export default function SignUpPage() {
           financeSubIndustries: selectedFinanceSubIndustries.join(", "),
           additionalPlaces: additionalPlaces.join(", "),
           slackEmail: formData.slackEmail,
+          howDidYouHear: formData.howDidYouHear,
         })
-        window.location.href = `/payment?${params.toString()}`
+        const fallbackUrl = `/payment?${params.toString()}`
+        console.log("Fallback URL:", fallbackUrl)
+        window.location.href = fallbackUrl
       }
 
     } catch (error) {
-      console.error('Signup error:', error)
+      console.error('❌ SIGNUP ERROR CAUGHT:', error)
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        type: typeof error,
+        error: error
+      })
       const errorMessage = error instanceof Error ? error.message : 'Signup failed. Please try again.'
       setSubmitError(errorMessage)
       toast.error(errorMessage)
     } finally {
+      console.log("🏁 FORM SUBMISSION FINISHED")
       setIsSubmitting(false)
     }
   }
@@ -307,6 +340,19 @@ export default function SignUpPage() {
                     />
                     <p className="text-sm text-gray-500 mt-1">
                       This email will be used to invite you to our exclusive Slack workspace
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="howDidYouHear">How did you hear about us? (Optional)</Label>
+                    <Input
+                      id="howDidYouHear"
+                      value={formData.howDidYouHear}
+                      onChange={(e) => handleInputChange("howDidYouHear", e.target.value)}
+                      placeholder="e.g., LinkedIn, friend referral, Google search, etc."
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Help us understand how you discovered Our Third Place
                     </p>
                   </div>
                 </div>
@@ -459,6 +505,23 @@ export default function SignUpPage() {
                   </div>
                 )}
 
+                {/* Debug: Show form validation status */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-800 mb-2">🔍 Debug: Form Status</h4>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    <p>Name: {formData.name ? '✅' : '❌'} "{formData.name}"</p>
+                    <p>Company: {formData.company ? '✅' : '❌'} "{formData.company}"</p>
+                    <p>LinkedIn: {formData.linkedin ? '✅' : '❌'} "{formData.linkedin}"</p>
+                    <p>Birthday: {formData.birthday ? '✅' : '❌'} "{formData.birthday}"</p>
+                    <p>Location: {formData.location ? '✅' : '❌'} "{formData.location}"</p>
+                    <p>Payment Plan: {formData.paymentPlan ? '✅' : '❌'} "{formData.paymentPlan}"</p>
+                    <p>Slack Email: {formData.slackEmail ? '✅' : '❌'} "{formData.slackEmail}"</p>
+                    <p>How did you hear: {formData.howDidYouHear ? '✅' : '➖'} "{formData.howDidYouHear}"</p>
+                    <p>Sub Industries: {selectedSubIndustries.length > 0 ? '✅' : '➖'} [{selectedSubIndustries.join(', ')}]</p>
+                    <p><strong>Button Disabled: {(isSubmitting || !formData.name || !formData.company || !formData.linkedin || !formData.birthday || !formData.location || !formData.paymentPlan || !formData.slackEmail) ? '🔴 YES' : '🟢 NO'}</strong></p>
+                  </div>
+                </div>
+
                 {/* Price Summary */}
                 {totalPrice && (
                   <div className="bg-[#dddbd4] p-4 rounded-lg">
@@ -525,6 +588,7 @@ export default function SignUpPage() {
 
                   <Button
                     type="submit"
+                    onClick={() => console.log("🔘 BUTTON CLICKED!")}
                     className="w-full bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90 text-white py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={
                       isSubmitting ||
