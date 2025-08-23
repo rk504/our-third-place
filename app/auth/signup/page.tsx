@@ -163,7 +163,7 @@ function AuthSignupPageContent() {
           howDidYouHear: formData.howDidYouHear,
         })
         
-        const paymentUrl = `/payment?${params.toString()}`
+        const paymentUrl = `/payment-stripe?${params.toString()}`
         console.log("Redirecting to:", paymentUrl)
         
         router.push(paymentUrl)

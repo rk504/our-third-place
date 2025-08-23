@@ -1,26 +1,54 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-07-30.basil',
+})
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient()
     
-    const { userId, paymentIntentId, amount, currency } = await request.json()
+    const { userId, sessionId, paymentIntentId, amount, currency } = await request.json()
 
-    if (!userId || !paymentIntentId) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 })
+    }
+
+    let stripeSessionData = null
+    
+    // If sessionId is provided, verify the Stripe session
+    if (sessionId) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId)
+        
+        if (session.payment_status !== 'paid') {
+          return NextResponse.json({ error: "Payment not completed" }, { status: 400 })
+        }
+        
+        stripeSessionData = session
+      } catch (stripeError) {
+        console.error("Stripe session verification error:", stripeError)
+        return NextResponse.json({ error: "Invalid session" }, { status: 400 })
+      }
+    } else if (!paymentIntentId) {
+      return NextResponse.json({ error: "Either sessionId or paymentIntentId is required" }, { status: 400 })
     }
 
     // Update membership status to active
+    const updateData = {
+      status: "active",
+      payment_intent_id: stripeSessionData?.payment_intent || paymentIntentId,
+      payment_amount: stripeSessionData?.amount_total || amount,
+      payment_currency: stripeSessionData?.currency || currency || 'usd',
+      activated_at: new Date().toISOString(),
+      stripe_session_id: sessionId || null,
+    }
+
     const { error: membershipError } = await supabase
       .from("memberships")
-      .update({ 
-        status: "active",
-        payment_intent_id: paymentIntentId,
-        payment_amount: amount,
-        payment_currency: currency,
-        activated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq("user_id", userId)
 
     if (membershipError) {
