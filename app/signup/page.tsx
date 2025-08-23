@@ -150,13 +150,6 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     console.log("🚀 FORM SUBMIT TRIGGERED!")
     e.preventDefault()
-    
-    // Prevent double submission
-    if (isSubmitting) {
-      console.log("⚠️ Already submitting, ignoring duplicate submission")
-      return
-    }
-    
     setIsSubmitting(true)
     setSubmitError(null)
 
@@ -227,9 +220,8 @@ export default function SignUpPage() {
           additionalPlaces: additionalPlaces.join(", "),
           slackEmail: formData.slackEmail,
           howDidYouHear: formData.howDidYouHear,
-          paymentPlan: formData.paymentPlan, // Add payment plan to fallback URL
         })
-        const fallbackUrl = `/payment-stripe?${params.toString()}`
+        const fallbackUrl = `/payment?${params.toString()}`
         console.log("Fallback URL:", fallbackUrl)
         window.location.href = fallbackUrl
       }
@@ -316,7 +308,7 @@ export default function SignUpPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="instagram">Instagram Handle (Optional)</Label>
+                    <Label htmlFor="instagram">Instagram Handle</Label>
                     <Input
                       id="instagram"
                       value={formData.instagram}
@@ -337,7 +329,7 @@ export default function SignUpPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="slackEmail">What email would you like to use? *</Label>
+                    <Label htmlFor="slackEmail">What email would you like to use for the Slack community? *</Label>
                     <Input
                       id="slackEmail"
                       type="email"
@@ -346,10 +338,10 @@ export default function SignUpPage() {
                       placeholder="your.email@example.com"
                       required
                     />
-{/*                     <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 mt-1">
                       This email will be used to invite you to our exclusive Slack workspace
                     </p>
- */}                  </div>
+                  </div>
 
                   <div>
                     <Label htmlFor="howDidYouHear">How did you hear about us? (Optional)</Label>
@@ -359,15 +351,15 @@ export default function SignUpPage() {
                       onChange={(e) => handleInputChange("howDidYouHear", e.target.value)}
                       placeholder="e.g., LinkedIn, friend referral, Google search, etc."
                     />
-{/*                     <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 mt-1">
                       Help us understand how you discovered Our Third Place
                     </p>
- */}                  </div>
+                  </div>
                 </div>
 
                 {/* Sub-Industries */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Select Your Sub-Industries (Optional)</h3> 
+                  <h3 className="text-lg font-semibold text-gray-900">Select Your Sub-Industries</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {subIndustries.map((industry) => (
                       <div key={industry} className="flex items-center space-x-2">
@@ -596,6 +588,7 @@ export default function SignUpPage() {
 
                   <Button
                     type="submit"
+                    onClick={() => console.log("🔘 BUTTON CLICKED!")}
                     className="w-full bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90 text-white py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={
                       isSubmitting ||

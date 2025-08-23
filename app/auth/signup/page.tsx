@@ -161,10 +161,9 @@ function AuthSignupPageContent() {
           additionalPlaces: formData.additionalPlaces,
           slackEmail: formData.slackEmail,
           howDidYouHear: formData.howDidYouHear,
-          paymentPlan: formData.paymentPlan, // Add payment plan to URL params
         })
         
-        const paymentUrl = `/payment-stripe?${params.toString()}`
+        const paymentUrl = `/payment?${params.toString()}`
         console.log("Redirecting to:", paymentUrl)
         
         router.push(paymentUrl)
@@ -212,7 +211,7 @@ function AuthSignupPageContent() {
                     disabled
                     className="bg-gray-100"
                   />
-                  {/* <p className="text-sm text-gray-500 mt-1">This email will be used for your account</p> */}
+                  <p className="text-sm text-gray-500 mt-1">This email will be used for your account</p>
                 </div>
 
                 <div>
