@@ -10,13 +10,13 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft, Check, X } from "lucide-react"
 import { Footer } from "@/components/footer"
 
-// Predefined discount codes
+// Predefined discount codes - using stripe for discount codes for now, this isn't working yet.
 const discountCodes = {
   WELCOME10: { type: "percentage", value: 10, description: "10% off first membership" },
   SAVE20: { type: "fixed", value: 20, description: "$20 off" },
   EARLYBIRD: { type: "percentage", value: 15, description: "15% early bird discount" },
   FRIEND25: { type: "fixed", value: 25, description: "$25 friend referral discount" },
-  KAYNAYPULLS: { type: "percentage", value: 100, description: "Kaynaypull discount" },
+  KAYNAYPULLS: { type: "percentage", value: 100, description: "You know KayNay, sick!" },
 }
 
 function PaymentPageContent() {
@@ -41,7 +41,7 @@ function PaymentPageContent() {
   const userHowDidYouHear = searchParams.get("howDidYouHear") || ""
   const membershipTier = searchParams.get("paymentPlan") || "monthly" // Get membership tier from URL
 
-  // Calculate pricing based on membership tier
+  // Calculate pricing based on membership tier - as this happens after discount codes, not working yet.
   const baseMonthly = 15
   const baseAnnual = 144
   const additionalMonthly = 5
