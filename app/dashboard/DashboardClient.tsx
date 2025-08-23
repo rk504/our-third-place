@@ -50,23 +50,25 @@ type Membership = {
 } | null
 
 type Event = {
-  id: number
+  id: string // uuid
   title: string
-  description?: string
-  starts_at: string
-  ends_at?: string
-  capacity?: number
-  status?: string
+  event_date: string // timestamptz
+  city: string
+  location: string
+  industry: string
+  sub_industry: string
+  type: string
+  status: string
+  image_url: string | null
+  created_at: string // timestamptz
 }
 
 type EventRegistration = {
   id: number
   status: string
   created_at: string
-  events?: Event[]
-  // For simplified debugging - these might be direct properties
-  event_id?: number
-  user_id?: string
+  event_id: string
+  events?: Event
 }
 
 type DashboardData = {
@@ -135,8 +137,8 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
     }
   }
 
-  const formatEventDate = (startsAt: string) => {
-    const date = new Date(startsAt)
+  const formatEventDate = (eventDate: string) => {
+    const date = new Date(eventDate)
     const dateFormatted = date.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -418,41 +420,58 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                 {upcomingEvents.length > 0 ? (
                   <div className="space-y-4">
                     {upcomingEvents.map((registration) => {
-                      // Handle both complex and simple event data structures
-                      const event = registration.events?.[0]
+                      const event = registration.events
                       return (
                         <div key={registration.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-semibold text-[#1b1f2c]">
-                              {event?.title || `Event Registration #${registration.id}`}
+                              {event?.title || `Event #${registration.event_id}`}
                             </h3>
-                            <Badge className="bg-green-100 text-green-800">{registration.status}</Badge>
+                            <div className="flex space-x-2">
+                              <Badge className="bg-blue-100 text-blue-800 capitalize">
+                                {registration.status}
+                              </Badge>
+                              <Badge className="bg-green-100 text-green-800">
+                                Registered
+                              </Badge>
+                            </div>
                           </div>
                           <div className="space-y-1 text-sm text-gray-600">
-                            {event?.starts_at && (
+                            {event?.event_date && (
                               <div className="flex items-center">
                                 <Clock className="w-4 h-4 mr-2" />
-                                {formatEventDate(event.starts_at)}
+                                {formatEventDate(event.event_date)}
                               </div>
                             )}
-                            {event?.capacity && (
+                            {event?.location && (
+                              <div className="flex items-center">
+                                <MapPin className="w-4 h-4 mr-2" />
+                                {event.location}, {event.city}
+                              </div>
+                            )}
+                            {event?.type && (
                               <div className="flex items-center">
                                 <Users className="w-4 h-4 mr-2" />
-                                Capacity: {event.capacity}
+                                {event.type} • {event.industry}
                               </div>
                             )}
-                            {!event && (
+                            {event?.sub_industry && (
                               <div className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-2" />
-                                Event ID: {registration.event_id || 'Unknown'}
+                                <Building2 className="w-4 h-4 mr-2" />
+                                {event.sub_industry}
                               </div>
                             )}
                           </div>
-                          {event?.description && (
-                            <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                              {event.description}
-                            </p>
-                          )}
+                          <div className="mt-3 pt-2 border-t">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-500">
+                                Registered on {new Date(registration.created_at).toLocaleDateString()}
+                              </span>
+                              <Button asChild size="sm" variant="outline">
+                                <Link href="/events">View Details</Link>
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       )
                     })}
@@ -469,32 +488,45 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
               </CardContent>
             </Card>
 
-            {/* Recent Activity */}
+            {/* Events Attended */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="w-5 h-5" />
-                  <span>Recent Activity</span>
+                  <Calendar className="w-5 h-5" />
+                  <span>Events Attended</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {pastEvents.length > 0 ? (
                   <div className="space-y-3">
                     {pastEvents.map((registration) => {
-                      const event = registration.events?.[0]
+                      const event = registration.events
                       return (
                         <div key={registration.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900">
-                              {event?.title ? `Attended "${event.title}"` : `Event Registration #${registration.id}`}
+                              {event?.title || `Event #${registration.event_id}`}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {event?.starts_at 
-                                ? formatEventDate(event.starts_at)
+                              {event?.event_date 
+                                ? formatEventDate(event.event_date)
                                 : `Registered on ${new Date(registration.created_at).toLocaleDateString()}`
                               }
                             </p>
+                            {event?.location && (
+                              <p className="text-xs text-gray-400">
+                                {event.location} • {event.industry}
+                              </p>
+                            )}
+                            <div className="flex items-center mt-1">
+                              <Badge className="bg-gray-100 text-gray-700 text-xs">
+                                {event?.type || 'Event'}
+                              </Badge>
+                              <Badge className="bg-green-100 text-green-700 text-xs ml-1">
+                                Attended
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       )
@@ -502,8 +534,11 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                   </div>
                 ) : (
                   <div className="text-center py-6">
-                    <TrendingUp className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No recent activity</p>
+                    <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">No events attended yet</p>
+                    <Button asChild size="sm" className="mt-2">
+                      <Link href="/events">Browse Events</Link>
+                    </Button>
                   </div>
                 )}
               </CardContent>

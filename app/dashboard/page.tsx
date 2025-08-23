@@ -32,11 +32,33 @@ type Membership = {
   current_period_end: string
 } | null
 
+type Event = {
+  id: string
+  title: string
+  event_date: string
+  location: string
+  city: string
+  industry: string
+  sub_industry: string
+  type: string
+  status: string
+  image_url: string | null
+  created_at: string
+}
+
+type EventRegistration = {
+  id: number
+  status: string
+  created_at: string
+  event_id: string
+  events?: Event
+}
+
 type DashboardData = {
   profile: Profile
   membership: Membership
-  upcomingEvents: any[]
-  pastEvents: any[]
+  upcomingEvents: EventRegistration[]
+  pastEvents: EventRegistration[]
   totalEventsAttended: number
 }
 
@@ -109,41 +131,113 @@ function DashboardPageContent() {
         console.log("Membership data:", membership)
         console.log("Membership error:", membershipError)
 
-        // Fetch upcoming events (simplified for MVP)
-        const { data: upcomingEvents, error: upcomingError } = await supabase
+        // Get current date/time for comparison - use exact moment
+        const now = new Date()
+        console.log("Exact current moment:", now)
+        
+        // First, fetch user's event registrations
+        const { data: registrations, error: registrationsError } = await supabase
           .from("event_registrations")
-          .select(`
-            id,
-            status,
-            created_at,
-            event_id
-          `)
+          .select("id, status, created_at, event_id")
           .eq("user_id", user.id)
-          .limit(5)
 
-        // Fetch past events (simplified for MVP)
-        const { data: pastEvents, error: pastError } = await supabase
-          .from("event_registrations")
-          .select(`
-            id,
-            status,
-            created_at,
-            event_id
-          `)
-          .eq("user_id", user.id)
-          .limit(3)
+        console.log("User registrations:", registrations)
+        console.log("Registrations error:", registrationsError)
 
-        // Count total events attended
+        if (registrationsError || !registrations) {
+          console.error("Failed to fetch registrations:", registrationsError)
+          setDashboardData({
+            profile: null,
+            membership: null,
+            upcomingEvents: [],
+            pastEvents: [],
+            totalEventsAttended: 0
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // Then fetch the corresponding events
+        const eventIds = registrations.map(reg => reg.event_id)
+        let allRegistrations: EventRegistration[] = []
+
+        if (eventIds.length > 0) {
+          const { data: events, error: eventsError } = await supabase
+            .from("events")
+            .select("*")
+            .in("id", eventIds)
+
+          console.log("Events data:", events)
+          console.log("Events error:", eventsError)
+
+          if (events && !eventsError) {
+            // Combine registrations with their corresponding events
+            allRegistrations = registrations.map(registration => {
+              const event = events.find(e => e.id === registration.event_id)
+              return {
+                ...registration,
+                events: event
+              }
+            }).filter(reg => reg.events !== undefined)
+          }
+        }
+
+        console.log("Combined registrations with events:", allRegistrations)
+        console.log("Current time for comparison:", now)
+
+        // Separate into upcoming and past events based on event_date
+        const upcomingEvents = allRegistrations?.filter(registration => {
+          if (!registration.events) return false
+          const eventDate = new Date(registration.events.event_date)
+          const eventTime = eventDate.getTime()
+          const nowTime = now.getTime()
+          const isUpcoming = eventTime >= nowTime
+          console.log(`🔍 Event "${registration.events.title}":`)
+          console.log(`  - Event date string: ${registration.events.event_date}`)
+          console.log(`  - Event Date object: ${eventDate}`)
+          console.log(`  - Event timestamp: ${eventTime}`)
+          console.log(`  - Now timestamp: ${nowTime}`)
+          console.log(`  - Is upcoming: ${isUpcoming}`)
+          console.log(`  - Difference (ms): ${eventTime - nowTime}`)
+          return isUpcoming
+        }) || []
+        const pastEvents = allRegistrations?.filter(registration => {
+          if (!registration.events) return false
+          const eventDate = new Date(registration.events.event_date)
+          return eventDate < now
+        }) || []
+
+        console.log("Upcoming events:", upcomingEvents)
+        console.log("Past events:", pastEvents)
+
+        // Sort and limit
+        upcomingEvents.sort((a, b) => {
+          if (!a.events || !b.events) return 0
+          return new Date(a.events.event_date).getTime() - new Date(b.events.event_date).getTime()
+        })
+        pastEvents.sort((a, b) => {
+          if (!a.events || !b.events) return 0
+          return new Date(b.events.event_date).getTime() - new Date(a.events.event_date).getTime()
+        })
+
+        // Count total events attended (only past events)
         const { count: totalEventsAttended, error: countError } = await supabase
           .from("event_registrations")
-          .select("*", { count: "exact", head: true })
+          .select(`
+            *,
+            events!inner (event_date)
+          `, { count: "exact", head: true })
           .eq("user_id", user.id)
+          .lt("events.event_date", now.toISOString())
+        
+        console.log("Total events attended count:", totalEventsAttended)
+        console.log("Count query used cutoff time:", now.toISOString())
 
         const data: DashboardData = {
           profile: profile ?? null,
           membership: membership ?? null,
-          upcomingEvents: upcomingEvents ?? [],
-          pastEvents: pastEvents ?? [],
+          upcomingEvents: upcomingEvents.slice(0, 5), // Limit to 5 most recent upcoming
+          pastEvents: pastEvents.slice(0, 3), // Limit to 3 most recent past
           totalEventsAttended: totalEventsAttended ?? 0
         }
 

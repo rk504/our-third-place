@@ -1,208 +1,66 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Users, MapPin, User, Settings, UserPlus, ChefHat, Building, HelpCircle, Menu, X, ChevronDown, DollarSign, Camera, Utensils, Heart, Search, Filter, Clock, ArrowLeft } from 'lucide-react'
+import { Calendar, Users, MapPin, Building2, DollarSign, Camera, Utensils, Heart, Search, Filter, Clock, ArrowLeft, X, ChefHat } from 'lucide-react'
 import { Footer } from "@/components/footer"
+import AppHeader from "@/components/AppHeader"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
-// Mock data for all events
-const allEvents = [
-{
-  id: 1,
-  title: "Media Mavens Mixer",
-  date: "2024-02-15",
-  time: "7:30 PM",
-  location: "The Smith, NYC",
-  neighborhood: "Midtown",
-  attendees: 6,
-  maxAttendees: 8,
-  priceRange: "$$",
-  industry: "Media",
-  subIndustry: "Marketing",
-  host: "Katherine Chen",
-  description: "Join fellow marketing professionals for an evening of networking and industry insights.",
-  imageUrl: "/images/cocktail-networking.jpg",
-  userRegistered: true,
-  status: "open",
-  type: "dinner",
-},
-{
-  id: 2,
-  title: "Finance Leaders Lunch",
-  date: "2024-02-18",
-  time: "12:00 PM",
-  location: "Gramercy Tavern, NYC",
-  neighborhood: "Gramercy",
-  attendees: 4,
-  maxAttendees: 6,
-  priceRange: "$$$",
-  industry: "Finance",
-  subIndustry: "Investment Banking",
-  host: "Michael Rodriguez",
-  description: "Intimate lunch discussion about current market trends and career development.",
-  imageUrl: "/images/intimate-conversation.jpg",
-  userRegistered: false,
-  status: "open",
-  type: "dinner",
-},
-{
-  id: 3,
-  title: "AdTech After Hours",
-  date: "2024-02-20",
-  time: "6:00 PM",
-  location: "Balthazar, NYC",
-  neighborhood: "SoHo",
-  attendees: 8,
-  maxAttendees: 10,
-  priceRange: "$$$",
-  industry: "Media",
-  subIndustry: "AdTech",
-  host: "Sarah Kim",
-  description: "Explore the latest in advertising technology while enjoying great food and company.",
-  imageUrl: "/images/dinner-toast.jpg",
-  userRegistered: false,
-  status: "open",
-  type: "networking",
-},
-{
-  id: 4,
-  title: "PR Professionals Gathering",
-  date: "2024-02-22",
-  time: "7:00 PM",
-  location: "Union Square Cafe, NYC",
-  neighborhood: "Union Square",
-  attendees: 5,
-  maxAttendees: 8,
-  priceRange: "$$",
-  industry: "Media",
-  subIndustry: "PR",
-  host: "Jessica Davis",
-  description: "Connect with PR professionals and discuss industry best practices over dinner.",
-  imageUrl: "/images/genuine-connections.jpg",
-  userRegistered: false,
-  status: "open",
-  type: "dinner",
-},
-{
-  id: 5,
-  title: "Fintech Founders Forum",
-  date: "2024-02-25",
-  time: "6:30 PM",
-  location: "The High Line Hotel, NYC",
-  neighborhood: "Chelsea",
-  attendees: 12,
-  maxAttendees: 15,
-  priceRange: "$$",
-  industry: "Finance",
-  subIndustry: "Fintech",
-  host: "David Park",
-  description: "Founders and leaders in fintech share insights and build connections.",
-  imageUrl: "/images/park-picnic.jpg",
-  userRegistered: false,
-  status: "open",
-  type: "networking",
-},
-{
-  id: 6,
-  title: "MoMA Art & Media Tour",
-  date: "2024-02-17",
-  time: "2:00 PM",
-  location: "Museum of Modern Art, NYC",
-  neighborhood: "Midtown",
-  attendees: 15,
-  maxAttendees: 20,
-  priceRange: "$",
-  industry: "Cross-Industry",
-  subIndustry: "Art & Culture",
-  host: "Amanda Liu",
-  description: "Explore modern art through the lens of media and advertising.",
-  imageUrl: "/images/cocktail-networking.jpg",
-  userRegistered: false,
-  status: "open",
-  type: "workshop",
-},
-{
-  id: 7,
-  title: "Brooklyn Bridge Networking Walk",
-  date: "2024-02-24",
-  time: "10:00 AM",
-  location: "Brooklyn Bridge, NYC",
-  neighborhood: "DUMBO",
-  attendees: 8,
-  maxAttendees: 12,
-  priceRange: "Free",
-  industry: "Cross-Industry",
-  subIndustry: "Wellness",
-  host: "Robert Chen",
-  description: "Start your weekend with a scenic walk and meaningful conversations.",
-  imageUrl: "/images/park-picnic.jpg",
-  userRegistered: false,
-  status: "open",
-  type: "brunch",
-},
-{
-  id: 8,
-  title: "Investment Banking Roundtable",
-  date: "2024-02-28",
-  time: "7:00 PM",
-  location: "Le Bernardin, NYC",
-  neighborhood: "Midtown West",
-  attendees: 10,
-  maxAttendees: 10,
-  priceRange: "$$$$",
-  industry: "Finance",
-  subIndustry: "Investment Banking",
-  host: "Alexandra Stone",
-  description: "Exclusive dinner for senior investment banking professionals.",
-  imageUrl: "/images/intimate-conversation.jpg",
-  userRegistered: false,
-  status: "full",
-  type: "dinner",
-},
-{
-  id: 9,
-  title: "Women in Finance Brunch",
-  date: "2024-03-02",
-  time: "11:00 AM",
-  location: "The Plaza Food Hall, NYC",
-  neighborhood: "Midtown",
-  attendees: 18,
-  maxAttendees: 20,
-  priceRange: "$$",
-  industry: "Finance",
-  subIndustry: "Leadership",
-  host: "Maria Santos",
-  description: "Empowering brunch for women leaders in finance.",
-  imageUrl: "/images/genuine-connections.jpg",
-  userRegistered: false,
-  status: "waitlist",
-  type: "brunch",
-},
-{
-  id: 10,
-  title: "Private Equity Dinner Series",
-  date: "2024-03-05",
-  time: "8:00 PM",
-  location: "Eleven Madison Park, NYC",
-  neighborhood: "Flatiron",
-  attendees: 6,
-  maxAttendees: 8,
-  priceRange: "$$$$",
-  industry: "Finance",
-  subIndustry: "Private Equity",
-  host: "Jonathan Wright",
-  description: "Intimate dinner for private equity professionals and investors.",
-  imageUrl: "/images/dinner-toast.jpg",
-  userRegistered: false,
-  status: "open",
-  type: "dinner",
-},
+// Types based on Supabase schema
+type Event = {
+  id: string // uuid
+  title: string
+  event_date: string // timestamptz
+  city: string
+  location: string
+  industry: string
+  sub_industry: string
+  type: string
+  status: string
+  image_url: string | null
+  created_at: string // timestamptz
+  // Computed fields for UI
+  current_attendees?: number
+  capacity?: number
+  host_name?: string
+  user_registered?: boolean
+}
+
+// Available event images for random selection
+const eventImages = [
+  "/images/20250612_mdc_brandlaunch_lowres-47_720.jpg",
+  "/images/20250612_mdc_brandlaunch_lowres-37_720.jpg", 
+  "/images/20250612_mdc_brandlaunch_lowres-25_720.jpg",
+  "/images/20250612_mdc_brandlaunch_lowres-21_720.jpg",
+  "/images/824261c4-be46-4b7e-b7d4-c9599331d348_720.jpg",
+  "/images/cocktail-networking.jpg",
+  "/images/dinner-toast.jpg",
+  "/images/genuine-connections.jpg",
+  "/images/intimate-conversation.jpg",
+  "/images/media-networking-hero.jpg",
+  "/images/park-picnic.jpg"
 ]
 
+// Function to get random image for event
+const getEventImage = (event: Event) => {
+  if (event.image_url) {
+    return event.image_url
+  }
+  
+  // Use event ID to ensure consistent image selection for same event
+  const eventIdNumber = parseInt(event.id.replace(/\D/g, ''), 10) || 0
+  const imageIndex = eventIdNumber % eventImages.length
+  return eventImages[imageIndex]
+}
+
+// Price range mappings for display
 const priceRanges = {
 $: "Budget Friendly ($15-30)",
 $$: "Moderate ($30-50)",
@@ -212,33 +70,176 @@ Free: "Free Event",
 }
 
 export default function EventsPage() {
-const [isMenuOpen, setIsMenuOpen] = useState(false)
-const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-const [selectedEvent, setSelectedEvent] = useState<any>(null)
+const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 const [searchTerm, setSearchTerm] = useState("")
 const [selectedType, setSelectedType] = useState("all")
 const [selectedIndustry, setSelectedIndustry] = useState("all")
 const [selectedSubIndustry, setSelectedSubIndustry] = useState("all")
 const [selectedCity, setSelectedCity] = useState("all")
+const [events, setEvents] = useState<Event[]>([])
+const [loading, setLoading] = useState(true)
+const [currentUser, setCurrentUser] = useState<any>(null)
+const router = useRouter()
+const supabase = createSupabaseBrowserClient()
 
-const toggleMenu = () => {
-  setIsMenuOpen(!isMenuOpen)
-  if (isDropdownOpen) setIsDropdownOpen(false)
-}
+// Fetch events from Supabase
+useEffect(() => {
+  const fetchEvents = async () => {
+    try {
+      // Get current user for registration status
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUser(user)
 
-const toggleDropdown = () => {
-  setIsDropdownOpen(!isDropdownOpen)
+      // Fetch events with registration counts and user registration status
+      console.log('=== FETCHING EVENTS ===')
+      
+      // First, try a simple query to test basic connectivity
+      const { data: testData, error: testError } = await supabase
+        .from('events')
+        .select('*')
+        .limit(1)
+      
+      console.log('Test query result:', testData, testError)
+      
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: true })
+
+      console.log('Events data:', eventsData)
+      console.log('Events error:', error)
+
+      if (error) {
+        console.error('Error fetching events:', error)
+        toast.error('Failed to load events')
+        return
+      }
+
+      if (!eventsData || eventsData.length === 0) {
+        console.log('No events found in database')
+        toast.info('No events found')
+        setEvents([])
+        return
+      }
+
+      console.log(`Found ${eventsData.length} events`)
+
+      // Get registration counts for each event
+      const eventsWithCounts = await Promise.all(
+        (eventsData || []).map(async (event) => {
+          const { count } = await supabase
+            .from('event_registrations')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_id', event.id)
+
+          // Check if current user is registered
+          let userRegistered = false
+          if (user) {
+            const { data: registration } = await supabase
+              .from('event_registrations')
+              .select('id')
+              .eq('event_id', event.id)
+              .eq('user_id', user.id)
+              .single()
+            
+            userRegistered = !!registration
+          }
+
+          return {
+            ...event,
+            current_attendees: count || 0,
+            capacity: 12, // Default capacity since it's not in the schema yet
+            host_name: 'Host', // Default host name since host info isn't in schema yet
+            user_registered: userRegistered
+          }
+        })
+      )
+
+      console.log('Events with counts:', eventsWithCounts)
+      setEvents(eventsWithCounts)
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Failed to load events')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchEvents()
+}, [supabase])
+
+
+
+// Event registration function
+const handleEventRegistration = async (event: Event) => {
+  if (!currentUser) {
+    toast.error('Please log in to register for events')
+    router.push('/login?next=/events')
+    return
+  }
+
+  if (event.current_attendees && event.capacity && event.current_attendees >= event.capacity && !event.user_registered) {
+    toast.error('This event is full')
+    return
+  }
+
+  try {
+    if (event.user_registered) {
+      // Deregister user
+      const { error } = await supabase
+        .from('event_registrations')
+        .delete()
+        .eq('event_id', event.id)
+        .eq('user_id', currentUser.id)
+
+      if (error) throw error
+
+      // Update local state
+      setEvents(events.map(e => 
+        e.id === event.id 
+          ? { ...e, user_registered: false, current_attendees: Math.max((e.current_attendees || 1) - 1, 0) }
+          : e
+      ))
+
+      toast.success('Successfully deregistered from event!')
+    } else {
+      // Register user
+      const { error } = await supabase
+        .from('event_registrations')
+        .insert({
+          event_id: event.id,
+          user_id: currentUser.id,
+          status: 'confirmed'
+        })
+
+      if (error) throw error
+
+      // Update local state
+      setEvents(events.map(e => 
+        e.id === event.id 
+          ? { ...e, user_registered: true, current_attendees: (e.current_attendees || 0) + 1 }
+          : e
+      ))
+
+      toast.success('Successfully registered for event!')
+    }
+  } catch (error) {
+    console.error('Registration error:', error)
+    toast.error(event.user_registered ? 'Failed to deregister from event' : 'Failed to register for event')
+  }
 }
 
 // Filter events based on search and filters
-const filteredEvents = allEvents.filter((event) => {
+const filteredEvents = events.filter((event) => {
   const matchesSearch =
     event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.description.toLowerCase().includes(searchTerm.toLowerCase())
+    event.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    event.sub_industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    event.location.toLowerCase().includes(searchTerm.toLowerCase())
   const matchesType = selectedType === "all" || event.type === selectedType
   const matchesIndustry = selectedIndustry === "all" || event.industry === selectedIndustry
-  const matchesSubIndustry = selectedSubIndustry === "all" || event.subIndustry === selectedSubIndustry
-  const matchesCity = selectedCity === "all" || event.neighborhood === selectedCity
+  const matchesSubIndustry = selectedSubIndustry === "all" || event.sub_industry === selectedSubIndustry
+  const matchesCity = selectedCity === "all" || event.city === selectedCity
 
   return matchesSearch && matchesType && matchesIndustry && matchesSubIndustry && matchesCity
 })
@@ -256,17 +257,24 @@ const getIndustryColor = (industry: string) => {
   }
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "open":
-      return "bg-green-100 text-green-800"
-    case "full":
-      return "bg-red-100 text-red-800"
-    case "waitlist":
-      return "bg-yellow-100 text-yellow-800"
-    default:
-      return "bg-gray-100 text-gray-800"
+const getStatusColor = (event: Event) => {
+  if (event.current_attendees && event.capacity && event.current_attendees >= event.capacity) {
+    return "bg-red-100 text-red-800"
   }
+  if (event.current_attendees && event.capacity && event.current_attendees >= event.capacity * 0.8) {
+    return "bg-yellow-100 text-yellow-800"
+  }
+  return "bg-green-100 text-green-800"
+}
+
+const getStatusText = (event: Event) => {
+  if (event.current_attendees && event.capacity && event.current_attendees >= event.capacity) {
+    return "Full"
+  }
+  if (event.current_attendees && event.capacity && event.current_attendees >= event.capacity * 0.8) {
+    return "Almost Full"
+  }
+  return "Open"
 }
 
 const getEventIcon = (type: string) => {
@@ -282,121 +290,38 @@ const getEventIcon = (type: string) => {
   }
 }
 
+// Format date and time for display
+const formatEventDateTime = (eventDate: string) => {
+  const date = new Date(eventDate)
+  const dateStr = date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  })
+  const timeStr = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  })
+  return { dateStr, timeStr }
+}
+
+if (loading) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-rose-100 via-amber-50 to-orange-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Loading events...</h2>
+      </div>
+    </div>
+  )
+}
+
 return (
   <div className="min-h-screen bg-gradient-to-br from-rose-100 via-amber-50 to-orange-100">
-    {/* Header */}
-    <header className="bg-gradient-to-r from-[#1b1f2c] to-[#646d59] text-white sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Image
-              src="/images/o3p-logo-circle.png"
-              alt="Our Third Place"
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-            <span className="text-2xl font-light" style={{ fontFamily: "Josefin Sans, sans-serif" }}>
-              OUR THIRD PLACE
-            </span>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            <div className="relative">
-              <button
-                onClick={toggleDropdown}
-                className="flex items-center space-x-1 hover:text-gray-200 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>Account</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg py-1 z-50">
-                  <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    My Profile
-                  </Link>
-                  <Link href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Settings
-                  </Link>
-                  <Link href="/refer" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Refer Friends
-                  </Link>
-                  <Link
-                    href="/dashboard/host-signin"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Host a Dinner
-                  </Link>
-                  <Link href="/chapter" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Start a New Chapter
-                  </Link>
-                  <Link href="/help" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Help
-                  </Link>
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Mobile Menu Button */}
-          <button onClick={toggleMenu} className="md:hidden p-2 hover:bg-white/10 transition-colors">
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-white/20">
-            <div className="flex flex-col space-y-2 mt-4">
-              <Link
-                href="/profile"
-                className="flex items-center space-x-2 px-4 py-2 hover:bg-white/10 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>My Profile</span>
-              </Link>
-              <Link
-                href="/settings"
-                className="flex items-center space-x-2 px-4 py-2 hover:bg-white/10 transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-                <span>Settings</span>
-              </Link>
-              <Link
-                href="/refer"
-                className="flex items-center space-x-2 px-4 py-2 hover:bg-white/10 transition-colors"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>Refer Friends</span>
-              </Link>
-              <Link
-                href="/dashboard/host-signin"
-                className="flex items-center space-x-2 px-4 py-2 hover:bg-white/10 transition-colors"
-              >
-                <ChefHat className="w-4 h-4" />
-                <span>Host a Dinner</span>
-              </Link>
-              <Link
-                href="/chapter"
-                className="flex items-center space-x-2 px-4 py-2 hover:bg-white/10 transition-colors"
-              >
-                <Building className="w-4 h-4" />
-                <span>Start a New Chapter</span>
-              </Link>
-              <Link
-                href="/help"
-                className="flex items-center space-x-2 px-4 py-2 hover:bg-white/10 transition-colors"
-              >
-                <HelpCircle className="w-4 h-4" />
-                <span>Help</span>
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
-    </header>
+    <AppHeader />
 
     <div className="container mx-auto px-4 py-8">
       {/* Page Header */}
@@ -539,6 +464,9 @@ return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {filteredEvents.map((event) => {
           const EventIcon = getEventIcon(event.type)
+          const { dateStr, timeStr } = formatEventDateTime(event.event_date)
+          const isFull = event.current_attendees && event.capacity && event.current_attendees >= event.capacity
+          
           return (
             <Card
               key={event.id}
@@ -547,15 +475,15 @@ return (
             >
               <div className="relative overflow-hidden">
                 <img
-                  src={event.imageUrl || "/placeholder.svg"}
+                  src={getEventImage(event)}
                   alt={event.title}
                   className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
 
                 {/* Status Badge */}
                 <div className="absolute top-2 right-2">
-                  <Badge className={`${getStatusColor(event.status)} text-xs font-medium`}>
-                    {event.status === "open" ? "Open" : event.status === "full" ? "Full" : "Waitlist"}
+                  <Badge className={`${getStatusColor(event)} text-xs font-medium`}>
+                    {getStatusText(event)}
                   </Badge>
                 </div>
 
@@ -578,14 +506,7 @@ return (
                 <div className="space-y-2 text-sm text-gray-600 mb-3">
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-2" />
-                    <span>
-                      {new Date(event.date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })}{" "}
-                      at {event.time}
-                    </span>
+                    <span>{dateStr} at {timeStr}</span>
                   </div>
                   <div className="flex items-center">
                     <MapPin className="w-4 h-4 mr-2" />
@@ -594,41 +515,42 @@ return (
                   <div className="flex items-center">
                     <Users className="w-4 h-4 mr-2" />
                     <span>
-                      {event.attendees}/{event.maxAttendees} attendees
+                      {event.current_attendees || 0}/{event.capacity || 'TBD'} attendees
                     </span>
                   </div>
                   <div className="flex items-center">
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    <span>{priceRanges[event.priceRange as keyof typeof priceRanges]}</span>
+                    <Building2 className="w-4 h-4 mr-2" />
+                    <span>{event.industry}</span>
                   </div>
                 </div>
 
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.description}</p>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.sub_industry} event in {event.city}</p>
 
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-gray-500">Hosted by {event.host}</div>
-                  {event.userRegistered && (
-                    <Badge className="bg-yellow-100 text-yellow-800 text-xs">Registered</Badge>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-500">Hosted by {event.host_name}</div>
+                  {event.user_registered && (
+                    <Badge className="bg-green-100 text-green-800 text-xs">✓ Registered</Badge>
                   )}
                 </div>
-
                 <Button
                   className={`w-full mt-3 ${
-                    event.status === "full"
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : event.status === "waitlist"
-                        ? "bg-yellow-500 hover:bg-yellow-600"
-                        : "bg-[#646d59] hover:bg-[#646d59]/90"
-                  } text-white`}
-                  disabled={event.status === "full"}
+                    isFull && !event.user_registered
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : event.user_registered
+                        ? "bg-green-100 hover:bg-green-200 text-green-800 border border-green-300"
+                        : "bg-[#646d59] hover:bg-[#646d59]/90 text-white"
+                  }`}
+                  disabled={Boolean(isFull && !event.user_registered)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleEventRegistration(event)
+                  }}
                 >
-                  {event.userRegistered
-                    ? "View Registration"
-                    : event.status === "full"
+                  {event.user_registered
+                    ? "✓ Registered - Click to Cancel"
+                    : isFull
                       ? "Event Full"
-                      : event.status === "waitlist"
-                        ? "Join Waitlist"
-                        : "Reserve Spot"}
+                      : "Reserve Spot"}
                 </Button>
               </CardContent>
             </Card>
@@ -680,7 +602,7 @@ return (
             </CardHeader>
             <CardContent className="space-y-6">
               <img
-                src={selectedEvent.imageUrl || "/placeholder.svg"}
+                src={getEventImage(selectedEvent)}
                 alt={selectedEvent.title}
                 className="w-full h-64 object-cover rounded-lg"
               />
@@ -692,12 +614,12 @@ return (
                     <div>
                       <p className="font-medium">Date & Time</p>
                       <p className="text-sm">
-                        {new Date(selectedEvent.date).toLocaleDateString("en-US", {
+                        {new Date(selectedEvent.event_date).toLocaleDateString("en-US", {
                           weekday: "long",
                           month: "long",
                           day: "numeric",
                         })}{" "}
-                        at {selectedEvent.time}
+                        at {formatEventDateTime(selectedEvent.event_date).timeStr}
                       </p>
                     </div>
                   </div>
@@ -707,15 +629,15 @@ return (
                     <div>
                       <p className="font-medium">Location</p>
                       <p className="text-sm">{selectedEvent.location}</p>
-                      <p className="text-xs text-gray-500">{selectedEvent.neighborhood}</p>
+                      <p className="text-xs text-gray-500">{selectedEvent.city}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center text-gray-600">
-                    <DollarSign className="w-5 h-5 mr-3" />
+                    <Building2 className="w-5 h-5 mr-3" />
                     <div>
-                      <p className="font-medium">Price Range</p>
-                      <p className="text-sm">{priceRanges[selectedEvent.priceRange as keyof typeof priceRanges]}</p>
+                      <p className="font-medium">Industry</p>
+                      <p className="text-sm">{selectedEvent.industry}</p>
                     </div>
                   </div>
                 </div>
@@ -726,7 +648,7 @@ return (
                     <div>
                       <p className="font-medium">Attendees</p>
                       <p className="text-sm">
-                        {selectedEvent.attendees} of {selectedEvent.maxAttendees} spots filled
+                        {selectedEvent.current_attendees || 0} of {selectedEvent.capacity || 'TBD'} spots filled
                       </p>
                     </div>
                   </div>
@@ -735,23 +657,19 @@ return (
                     <ChefHat className="w-5 h-5 mr-3" />
                     <div>
                       <p className="font-medium">Host</p>
-                      <p className="text-sm">{selectedEvent.host}</p>
+                      <p className="text-sm">{selectedEvent.host_name}</p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Badge className={getIndustryColor(selectedEvent.industry)}>{selectedEvent.industry}</Badge>
-                    {selectedEvent.subIndustry && (
+                    {selectedEvent.sub_industry && (
                       <Badge variant="outline" className="ml-2 border-gray-300 text-gray-600">
-                        {selectedEvent.subIndustry}
+                        {selectedEvent.sub_industry}
                       </Badge>
                     )}
-                    <Badge className={`ml-2 ${getStatusColor(selectedEvent.status)}`}>
-                      {selectedEvent.status === "open"
-                        ? "Open"
-                        : selectedEvent.status === "full"
-                          ? "Full"
-                          : "Waitlist"}
+                    <Badge className={`ml-2 ${getStatusColor(selectedEvent)}`}>
+                      {getStatusText(selectedEvent)}
                     </Badge>
                   </div>
                 </div>
@@ -759,27 +677,26 @@ return (
 
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">About This Event</h3>
-                <p className="text-gray-600">{selectedEvent.description}</p>
+                <p className="text-gray-600">Join us for a {selectedEvent.sub_industry} {selectedEvent.type} in {selectedEvent.city}. This is a great opportunity to network with professionals in the {selectedEvent.industry} industry.</p>
               </div>
 
               <div className="flex space-x-4">
                 <Button
                   className={`flex-1 ${
-                    selectedEvent.status === "full"
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : selectedEvent.status === "waitlist"
-                        ? "bg-yellow-500 hover:bg-yellow-600"
-                        : "bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90"
-                  } text-white`}
-                  disabled={selectedEvent.status === "full"}
+                    selectedEvent.current_attendees && selectedEvent.capacity && selectedEvent.current_attendees >= selectedEvent.capacity && !selectedEvent.user_registered
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : selectedEvent.user_registered
+                        ? "bg-green-100 hover:bg-green-200 text-green-800 border border-green-300"
+                        : "bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90 text-white"
+                  }`}
+                  disabled={!!(selectedEvent.current_attendees && selectedEvent.capacity && selectedEvent.current_attendees >= selectedEvent.capacity && !selectedEvent.user_registered)}
+                  onClick={() => handleEventRegistration(selectedEvent)}
                 >
-                  {selectedEvent.userRegistered
-                    ? "View Registration"
-                    : selectedEvent.status === "full"
+                  {selectedEvent.user_registered
+                    ? "✓ Registered - Click to Cancel Registration"
+                    : selectedEvent.current_attendees && selectedEvent.capacity && selectedEvent.current_attendees >= selectedEvent.capacity
                       ? "Event Full"
-                      : selectedEvent.status === "waitlist"
-                        ? "Join Waitlist"
-                        : "Reserve Your Spot"}
+                      : "Reserve Your Spot"}
                 </Button>
                 <Button variant="outline" className="border-gray-300 bg-transparent">
                   <Heart className="w-4 h-4 mr-2" />
