@@ -150,6 +150,13 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     console.log("🚀 FORM SUBMIT TRIGGERED!")
     e.preventDefault()
+    
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log("⚠️ Already submitting, ignoring duplicate submission")
+      return
+    }
+    
     setIsSubmitting(true)
     setSubmitError(null)
 
@@ -588,7 +595,6 @@ export default function SignUpPage() {
 
                   <Button
                     type="submit"
-                    onClick={() => console.log("🔘 BUTTON CLICKED!")}
                     className="w-full bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90 text-white py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={
                       isSubmitting ||

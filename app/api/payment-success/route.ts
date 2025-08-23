@@ -39,11 +39,7 @@ export async function POST(request: NextRequest) {
     // Update membership status to active
     const updateData = {
       status: "active",
-      payment_intent_id: stripeSessionData?.payment_intent || paymentIntentId,
-      payment_amount: stripeSessionData?.amount_total || amount,
-      payment_currency: stripeSessionData?.currency || currency || 'usd',
-      activated_at: new Date().toISOString(),
-      stripe_session_id: sessionId || null,
+      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
     }
 
     const { error: membershipError } = await supabase
@@ -60,10 +56,9 @@ export async function POST(request: NextRequest) {
     const { error: profileError } = await supabase
       .from("profiles")
       .update({ 
-        membership_status: "active",
-        membership_activated_at: new Date().toISOString()
+        membership_tier: "active"
       })
-      .eq("id", userId)
+      .eq("user_id", userId)
 
     if (profileError) {
       console.error("Profile update error:", profileError)

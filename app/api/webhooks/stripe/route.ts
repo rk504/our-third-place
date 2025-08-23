@@ -46,11 +46,7 @@ export async function POST(request: NextRequest) {
             .from("memberships")
             .update({ 
               status: "active",
-              payment_intent_id: session.payment_intent,
-              payment_amount: session.amount_total,
-              payment_currency: session.currency,
-              activated_at: new Date().toISOString(),
-              stripe_session_id: session.id,
+              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
             })
             .eq("user_id", userId)
 
@@ -61,10 +57,9 @@ export async function POST(request: NextRequest) {
             await supabase
               .from("profiles")
               .update({ 
-                membership_status: "active",
-                membership_activated_at: new Date().toISOString()
+                membership_tier: "active"
               })
-              .eq("id", userId)
+              .eq("user_id", userId)
           }
         }
       } catch (error) {

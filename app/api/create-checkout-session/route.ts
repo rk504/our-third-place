@@ -71,8 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: lineItems,
+      line_items: lineItems as any, // Type assertion to bypass type error for now
       mode: 'subscription',
       success_url: `${request.headers.get('origin')}/payment-stripe/success?session_id={CHECKOUT_SESSION_ID}&userId=${userId}&city=${encodeURIComponent(city)}&subIndustries=${encodeURIComponent(subIndustries || '')}&financeSubIndustries=${encodeURIComponent(financeSubIndustries || '')}&additionalPlaces=${encodeURIComponent(additionalPlaces || '')}&slackEmail=${encodeURIComponent(slackEmail || '')}&howDidYouHear=${encodeURIComponent(howDidYouHear || '')}`,
       cancel_url: `${request.headers.get('origin')}/payment-stripe?cancelled=true`,
