@@ -266,7 +266,8 @@ function PaymentPageContent() {
 
                 {/* Pricing Breakdown */}
                 <div className="space-y-3">
-{/*                   <div className="flex justify-between">
+                  {/* Commented out for now
+                  <div className="flex justify-between">
                     <span>Primary Location</span>
                     <span>{membershipTier === "annual" ? `$${baseAnnual}/yr` : `$${baseMonthly}/month`}</span>
                   </div>
@@ -276,7 +277,8 @@ function PaymentPageContent() {
                       <span>Additional Places ({additionalCount})</span>
                       <span>{membershipTier === "annual" ? `$${additionalCount * additionalAnnual}/yr` : `$${additionalCount * additionalMonthly}/month`}</span>
                     </div>
-                  )} */}
+                  )}
+                  */}
 
                   <div className="border-t border-gray-300 pt-3">
                     <div className="flex justify-between">

@@ -220,8 +220,9 @@ export default function SignUpPage() {
           additionalPlaces: additionalPlaces.join(", "),
           slackEmail: formData.slackEmail,
           howDidYouHear: formData.howDidYouHear,
+          paymentPlan: formData.paymentPlan, // Add payment plan to fallback URL
         })
-        const fallbackUrl = `/payment?${params.toString()}`
+        const fallbackUrl = `/payment-stripe?${params.toString()}`
         console.log("Fallback URL:", fallbackUrl)
         window.location.href = fallbackUrl
       }
@@ -308,7 +309,7 @@ export default function SignUpPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="instagram">Instagram Handle</Label>
+                    <Label htmlFor="instagram">Instagram Handle (Optional)</Label>
                     <Input
                       id="instagram"
                       value={formData.instagram}
@@ -329,7 +330,7 @@ export default function SignUpPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="slackEmail">What email would you like to use for the Slack community? *</Label>
+                    <Label htmlFor="slackEmail">What email would you like to use? *</Label>
                     <Input
                       id="slackEmail"
                       type="email"
@@ -338,10 +339,10 @@ export default function SignUpPage() {
                       placeholder="your.email@example.com"
                       required
                     />
-                    <p className="text-sm text-gray-500 mt-1">
+{/*                     <p className="text-sm text-gray-500 mt-1">
                       This email will be used to invite you to our exclusive Slack workspace
                     </p>
-                  </div>
+ */}                  </div>
 
                   <div>
                     <Label htmlFor="howDidYouHear">How did you hear about us? (Optional)</Label>
@@ -351,15 +352,15 @@ export default function SignUpPage() {
                       onChange={(e) => handleInputChange("howDidYouHear", e.target.value)}
                       placeholder="e.g., LinkedIn, friend referral, Google search, etc."
                     />
-                    <p className="text-sm text-gray-500 mt-1">
+{/*                     <p className="text-sm text-gray-500 mt-1">
                       Help us understand how you discovered Our Third Place
                     </p>
-                  </div>
+ */}                  </div>
                 </div>
 
                 {/* Sub-Industries */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Select Your Sub-Industries</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Select Your Sub-Industries (Optional)</h3> 
                   <div className="grid grid-cols-2 gap-3">
                     {subIndustries.map((industry) => (
                       <div key={industry} className="flex items-center space-x-2">
