@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [mode, setMode] = useState<"magic" | "password">("password") // Default to password for signup users
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -288,5 +288,22 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Loading login page...</h2>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   )
 }
