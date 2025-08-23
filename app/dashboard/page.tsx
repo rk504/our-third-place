@@ -135,11 +135,12 @@ function DashboardPageContent() {
         const now = new Date()
         console.log("Exact current moment:", now)
         
-        // First, fetch user's event registrations
+        // First, fetch user's confirmed event registrations
         const { data: registrations, error: registrationsError } = await supabase
           .from("event_registrations")
           .select("id, status, created_at, event_id")
           .eq("user_id", user.id)
+          .eq("status", "confirmed")
 
         console.log("User registrations:", registrations)
         console.log("Registrations error:", registrationsError)
@@ -220,7 +221,7 @@ function DashboardPageContent() {
           return new Date(b.events.event_date).getTime() - new Date(a.events.event_date).getTime()
         })
 
-        // Count total events attended (only past events)
+        // Count total events attended (only past events with confirmed status)
         const { count: totalEventsAttended, error: countError } = await supabase
           .from("event_registrations")
           .select(`
@@ -228,6 +229,7 @@ function DashboardPageContent() {
             events!inner (event_date)
           `, { count: "exact", head: true })
           .eq("user_id", user.id)
+          .eq("status", "confirmed")
           .lt("events.event_date", now.toISOString())
         
         console.log("Total events attended count:", totalEventsAttended)

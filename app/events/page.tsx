@@ -186,19 +186,22 @@ useEffect(() => {
       // Get registration counts for each event
       const eventsWithCounts = await Promise.all(
         (eventsData || []).map(async (event) => {
+          // Count only confirmed registrations for capacity
           const { count } = await supabase
             .from('event_registrations')
             .select('*', { count: 'exact', head: true })
             .eq('event_id', event.id)
+            .eq('status', 'confirmed')
 
-          // Check if current user is registered
+          // Check if current user is registered (only confirmed registrations)
           let userRegistered = false
           if (user) {
             const { data: registration } = await supabase
               .from('event_registrations')
-              .select('id')
+              .select('id, status')
               .eq('event_id', event.id)
               .eq('user_id', user.id)
+              .eq('status', 'confirmed')
               .single()
             
             userRegistered = !!registration
@@ -244,10 +247,10 @@ const handleEventRegistration = async (event: Event) => {
 
   try {
     if (event.user_registered) {
-      // Deregister user
+      // Deregister user - update status instead of deleting
       const { error } = await supabase
         .from('event_registrations')
-        .delete()
+        .update({ status: 'cancelled' })
         .eq('event_id', event.id)
         .eq('user_id', currentUser.id)
 
@@ -260,18 +263,37 @@ const handleEventRegistration = async (event: Event) => {
           : e
       ))
 
-      toast.success('Successfully deregistered from event!')
+      toast.success('Successfully cancelled registration!')
     } else {
-      // Register user
-      const { error } = await supabase
+      // Check if user has a cancelled registration to reactivate
+      const { data: existingRegistration } = await supabase
         .from('event_registrations')
-        .insert({
-          event_id: event.id,
-          user_id: currentUser.id,
-          status: 'confirmed'
-        })
+        .select('id')
+        .eq('event_id', event.id)
+        .eq('user_id', currentUser.id)
+        .single()
 
-      if (error) throw error
+      if (existingRegistration) {
+        // Reactivate existing registration
+        const { error } = await supabase
+          .from('event_registrations')
+          .update({ status: 'confirmed' })
+          .eq('event_id', event.id)
+          .eq('user_id', currentUser.id)
+
+        if (error) throw error
+      } else {
+        // Create new registration
+        const { error } = await supabase
+          .from('event_registrations')
+          .insert({
+            event_id: event.id,
+            user_id: currentUser.id,
+            status: 'confirmed'
+          })
+
+        if (error) throw error
+      }
 
       // Update local state
       setEvents(events.map(e => 
@@ -284,7 +306,7 @@ const handleEventRegistration = async (event: Event) => {
     }
   } catch (error) {
     console.error('Registration error:', error)
-    toast.error(event.user_registered ? 'Failed to deregister from event' : 'Failed to register for event')
+    toast.error(event.user_registered ? 'Failed to cancel registration' : 'Failed to register for event')
   }
 }
 
