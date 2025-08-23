@@ -16,6 +16,7 @@ const discountCodes = {
   SAVE20: { type: "fixed", value: 20, description: "$20 off" },
   EARLYBIRD: { type: "percentage", value: 15, description: "15% early bird discount" },
   FRIEND25: { type: "fixed", value: 25, description: "$25 friend referral discount" },
+  KAYNAYPULLS: { type: "percentage", value: 100, description: "Kaynaypull discount" },
 }
 
 function PaymentPageContent() {
@@ -38,15 +39,21 @@ function PaymentPageContent() {
   const userAdditionalPlaces = searchParams.get("additionalPlaces") || ""
   const userSlackEmail = searchParams.get("slackEmail") || ""
   const userHowDidYouHear = searchParams.get("howDidYouHear") || ""
+  const membershipTier = searchParams.get("paymentPlan") || "monthly" // Get membership tier from URL
 
-  // Calculate pricing (this should match the signup page logic)
+  // Calculate pricing based on membership tier
   const baseMonthly = 15
+  const baseAnnual = 144
   const additionalMonthly = 5
+  const additionalAnnual = 50
 
   const additionalPlaces = userAdditionalPlaces ? userAdditionalPlaces.split(", ").filter((place) => place) : []
   const additionalCount = additionalPlaces.length
 
   const monthlyTotal = baseMonthly + additionalCount * additionalMonthly
+  const annualTotal = baseAnnual + additionalCount * additionalAnnual
+  const currentTotal = membershipTier === "annual" ? annualTotal : monthlyTotal
+  const displayPrice = membershipTier === "annual" ? `$${annualTotal}/yr` : `$${monthlyTotal}/month`
 
   const handleApplyDiscount = () => {
     const code = discountCode.toUpperCase()
@@ -94,6 +101,7 @@ function PaymentPageContent() {
     setIsProcessing(true)
 
     try {
+      // Use Stripe Checkout Sessions for full control over redirect URLs
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -108,6 +116,7 @@ function PaymentPageContent() {
           slackEmail: userSlackEmail,
           howDidYouHear: userHowDidYouHear,
           discountCode: appliedDiscount?.code || null,
+          membershipTier, // Pass the membership tier
         }),
       })
 
@@ -123,7 +132,7 @@ function PaymentPageContent() {
       window.location.href = url
     } catch (error) {
       console.error('Checkout error:', error)
-      alert('Failed to create checkout session. Please try again.')
+      alert('Failed to redirect to Stripe. Please try again.')
     } finally {
       setIsProcessing(false)
     }
@@ -205,7 +214,7 @@ function PaymentPageContent() {
                   >
                     {isProcessing
                       ? "Redirecting to Stripe..."
-                      : `Continue to Payment - $${appliedDiscount ? calculateDiscountedPrice(monthlyTotal).toFixed(2) : monthlyTotal.toFixed(2)}/month`}
+                      : `Continue to Payment - ${appliedDiscount ? `$${calculateDiscountedPrice(currentTotal).toFixed(2)}${membershipTier === "annual" ? "/yr" : "/month"}` : displayPrice}`}
                   </Button>
                   
                   {!userId && (
@@ -257,29 +266,29 @@ function PaymentPageContent() {
 
                 {/* Pricing Breakdown */}
                 <div className="space-y-3">
-                  <div className="flex justify-between">
+{/*                   <div className="flex justify-between">
                     <span>Primary Location</span>
-                    <span>${baseMonthly}/month</span>
+                    <span>{membershipTier === "annual" ? `$${baseAnnual}/yr` : `$${baseMonthly}/month`}</span>
                   </div>
 
                   {additionalCount > 0 && (
                     <div className="flex justify-between">
                       <span>Additional Places ({additionalCount})</span>
-                      <span>${additionalCount * additionalMonthly}/month</span>
+                      <span>{membershipTier === "annual" ? `$${additionalCount * additionalAnnual}/yr` : `$${additionalCount * additionalMonthly}/month`}</span>
                     </div>
-                  )}
+                  )} */}
 
                   <div className="border-t border-gray-300 pt-3">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
-                      <span>${monthlyTotal}/month</span>
+                      <span>{membershipTier === "annual" ? `$${annualTotal}/yr` : `$${monthlyTotal}/month`}</span>
                     </div>
                   </div>
 
                   {appliedDiscount && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount ({appliedDiscount.code})</span>
-                      <span>-${calculateDiscount(monthlyTotal).toFixed(2)}</span>
+                      <span>-${calculateDiscount(currentTotal).toFixed(2)}</span>
                     </div>
                   )}
 
@@ -287,7 +296,10 @@ function PaymentPageContent() {
                     <div className="flex justify-between font-bold text-lg">
                       <span>Total</span>
                       <span>
-                        ${appliedDiscount ? calculateDiscountedPrice(monthlyTotal).toFixed(2) : monthlyTotal}/month
+                        {appliedDiscount 
+                          ? `$${calculateDiscountedPrice(currentTotal).toFixed(2)}${membershipTier === "annual" ? "/yr" : "/month"}`
+                          : displayPrice
+                        }
                       </span>
                     </div>
                   </div>
@@ -295,7 +307,7 @@ function PaymentPageContent() {
                   {appliedDiscount && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                       <p className="text-green-800 text-sm font-medium">
-                        You're saving ${calculateDiscount(monthlyTotal).toFixed(2)}/month with code{" "}
+                        You're saving ${calculateDiscount(currentTotal).toFixed(2)}{membershipTier === "annual" ? "/yr" : "/month"} with code{" "}
                         {appliedDiscount.code}!
                       </p>
                     </div>

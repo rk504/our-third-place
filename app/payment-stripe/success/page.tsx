@@ -6,13 +6,15 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, X, Camera, Heart, MessageSquare, Calendar, User } from "lucide-react"
+import { Check, X, Heart, MessageSquare, Calendar, User } from "lucide-react"
 import { Footer } from "@/components/footer"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const [isVerifying, setIsVerifying] = useState(true)
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'error' | 'loading'>('loading')
+  const [membershipTier, setMembershipTier] = useState<'monthly' | 'annual' | null>(null)
 
   // Get user data from URL params
   const sessionId = searchParams.get("session_id") || ""
@@ -25,7 +27,7 @@ function PaymentSuccessContent() {
   const userHowDidYouHear = searchParams.get("howDidYouHear") || ""
 
   useEffect(() => {
-    const verifyPayment = async () => {
+    const verifyPaymentAndFetchMembership = async () => {
       if (!sessionId || !userId) {
         setPaymentStatus('error')
         setIsVerifying(false)
@@ -47,6 +49,22 @@ function PaymentSuccessContent() {
 
         if (response.ok) {
           setPaymentStatus('success')
+          
+          // Fetch membership tier from Supabase
+          const supabase = createSupabaseBrowserClient()
+          const { data: membership, error: membershipError } = await supabase
+            .from('memberships')
+            .select('tier')
+            .eq('user_id', userId)
+            .single()
+
+          if (membershipError) {
+            console.error('Error fetching membership:', membershipError)
+            // Default to monthly if we can't fetch the tier
+            setMembershipTier('monthly')
+          } else {
+            setMembershipTier(membership.tier as 'monthly' | 'annual')
+          }
         } else {
           setPaymentStatus('error')
         }
@@ -58,7 +76,7 @@ function PaymentSuccessContent() {
       }
     }
 
-    verifyPayment()
+    verifyPaymentAndFetchMembership()
   }, [sessionId, userId])
 
   if (isVerifying) {
@@ -88,7 +106,7 @@ function PaymentSuccessContent() {
             <h2 className="text-xl font-bold text-gray-900 mb-2">Payment Error</h2>
             <p className="text-gray-600 mb-4">There was an issue verifying your payment. Please contact support.</p>
             <Button asChild>
-              <a href="mailto:reesemdc@gmail.com">Contact Support</a>
+              <Link href="mailto:support@ourthirdplace.com">Contact Support</Link>
             </Button>
           </CardContent>
         </Card>
@@ -120,7 +138,9 @@ function PaymentSuccessContent() {
               <CardTitle className="text-2xl font-bold text-gray-900">
                 Welcome to Our Third Place!<br/> Make sure to verify your email.
               </CardTitle>
-              <p className="text-gray-600">Your membership is now active. Let's get you set up!</p>
+              <p className="text-gray-600">
+                Your {membershipTier === 'annual' ? 'annual' : 'monthly'} membership is now active. Let's get you set up!
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* 1. Slack Communities */}
@@ -164,18 +184,6 @@ function PaymentSuccessContent() {
                   2. Finish Your Profile
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                    <div className="flex items-center space-x-3">
-                      <Camera className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">Add Headshot</p>
-                        <p className="text-sm text-gray-600">Help members recognize you at events</p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" className="border-purple-300 text-purple-700 bg-transparent">
-                      Upload Photo
-                    </Button>
-                  </div>
                   <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
                     <div className="flex items-center space-x-3">
                       <Heart className="w-5 h-5 text-purple-600" />

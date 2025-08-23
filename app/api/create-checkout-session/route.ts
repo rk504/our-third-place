@@ -18,22 +18,29 @@ export async function POST(request: NextRequest) {
       additionalPlaces,
       slackEmail,
       howDidYouHear,
-      discountCode
+      discountCode,
+      membershipTier
     } = await request.json()
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 })
     }
 
-    // Calculate pricing (same logic as payment page)
+    // Calculate pricing based on membership tier
     const baseMonthly = 15
+    const baseAnnual = 144
     const additionalMonthly = 5
+    const additionalAnnual = 50
+    
     const additionalPlacesArray = additionalPlaces ? additionalPlaces.split(", ").filter((place: string) => place) : []
     const additionalCount = additionalPlacesArray.length
+    
     const monthlyTotal = baseMonthly + additionalCount * additionalMonthly
+    const annualTotal = baseAnnual + additionalCount * additionalAnnual
+    const currentTotal = membershipTier === "annual" ? annualTotal : monthlyTotal
 
     // Apply discount if provided
-    let finalAmount = monthlyTotal
+    let finalAmount = currentTotal
     const discountCodes: Record<string, any> = {
       WELCOME10: { type: "percentage", value: 10, description: "10% off first membership" },
       SAVE20: { type: "fixed", value: 20, description: "$20 off" },
@@ -45,9 +52,9 @@ export async function POST(request: NextRequest) {
     if (discountCode && discountCodes[discountCode.toUpperCase()]) {
       appliedDiscount = discountCodes[discountCode.toUpperCase()]
       if (appliedDiscount.type === "percentage") {
-        finalAmount = monthlyTotal - (monthlyTotal * appliedDiscount.value) / 100
+        finalAmount = currentTotal - (currentTotal * appliedDiscount.value) / 100
       } else {
-        finalAmount = Math.max(0, monthlyTotal - appliedDiscount.value)
+        finalAmount = Math.max(0, currentTotal - appliedDiscount.value)
       }
     }
 
@@ -58,11 +65,11 @@ export async function POST(request: NextRequest) {
           currency: 'usd',
           product_data: {
             name: 'Our Third Place Membership',
-            description: `Monthly membership for ${city}${additionalCount > 0 ? ` + ${additionalCount} additional places` : ''}`,
+            description: `${membershipTier === 'annual' ? 'Annual' : 'Monthly'} membership for ${city}${additionalCount > 0 ? ` + ${additionalCount} additional places` : ''}`,
           },
           unit_amount: Math.round(finalAmount * 100), // Stripe expects cents
           recurring: {
-            interval: 'month',
+            interval: membershipTier === 'annual' ? 'year' : 'month',
           },
         },
         quantity: 1,
@@ -73,7 +80,7 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       line_items: lineItems as any, // Type assertion to bypass type error for now
       mode: 'subscription',
-      success_url: `${request.headers.get('origin')}/payment-stripe/success?session_id={CHECKOUT_SESSION_ID}&userId=${userId}&city=${encodeURIComponent(city)}&subIndustries=${encodeURIComponent(subIndustries || '')}&financeSubIndustries=${encodeURIComponent(financeSubIndustries || '')}&additionalPlaces=${encodeURIComponent(additionalPlaces || '')}&slackEmail=${encodeURIComponent(slackEmail || '')}&howDidYouHear=${encodeURIComponent(howDidYouHear || '')}`,
+      success_url: `${request.headers.get('origin')}/payment-stripe/success?session_id={CHECKOUT_SESSION_ID}&userId=${userId}&city=${encodeURIComponent(city)}&subIndustries=${encodeURIComponent(subIndustries || '')}&financeSubIndustries=${encodeURIComponent(financeSubIndustries || '')}&additionalPlaces=${encodeURIComponent(additionalPlaces || '')}&slackEmail=${encodeURIComponent(slackEmail || '')}&howDidYouHear=${encodeURIComponent(howDidYouHear || '')}&paymentPlan=${membershipTier || 'monthly'}`,
       cancel_url: `${request.headers.get('origin')}/payment-stripe?cancelled=true`,
       customer_email: slackEmail,
       metadata: {
