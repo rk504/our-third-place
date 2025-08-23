@@ -33,31 +33,90 @@ type Event = {
   user_registered?: boolean
 }
 
-// Available event images for random selection
-const eventImages = [
-  "/images/20250612_mdc_brandlaunch_lowres-47_720.jpg",
-  "/images/20250612_mdc_brandlaunch_lowres-37_720.jpg", 
-  "/images/20250612_mdc_brandlaunch_lowres-25_720.jpg",
-  "/images/20250612_mdc_brandlaunch_lowres-21_720.jpg",
-  "/images/824261c4-be46-4b7e-b7d4-c9599331d348_720.jpg",
-  "/images/cocktail-networking.jpg",
-  "/images/dinner-toast.jpg",
-  "/images/genuine-connections.jpg",
-  "/images/intimate-conversation.jpg",
-  "/images/media-networking-hero.jpg",
-  "/images/park-picnic.jpg"
-]
+// Available event images categorized by event type/industry
+const eventImagesByType = {
+  media: [
+    "/images/media-networking-hero.jpg",
+    "/images/intimate-conversation.jpg",
+    "/images/img-1513_720.jpg",
+    "/images/img_3738_720.jpg",
+    "/images/img_3756_720.jpg",
+    "/images/img_3728_720.jpg",
+  ],
+  finance: [
+    "/images/dinner-toast.jpg",
+    "/images/genuine-connections.jpg",
+    "/images/20250612_mdc_brandlaunch_lowres-21_720.jpg",
+    "/images/img_0513_720.jpg",
+    "/images/img_1793_720.jpg"
+  ],
+  networking: [
+    "/images/cocktail-networking.jpg",
+    "/images/824261c4-be46-4b7e-b7d4-c9599331d348_720.jpg",
+    "/images/20250612_mdc_brandlaunch_lowres-5_720.jpg",
+    "/images/img_2786_720.jpg",
+    "/images/tezza-4130_720.jpg"
+  ],
+  default: [
+    "/images/park-picnic.jpg",
+    "/images/genuine-connections.jpg",
+    "/images/cocktail-networking.jpg",
+    "/images/image_from_ios_720.jpg"
+  ]
+}
 
-// Function to get random image for event
+// Track which images have been used to prevent duplicates
+const usedImages = new Set<string>()
+
+// Function to get appropriate image for event
 const getEventImage = (event: Event) => {
   if (event.image_url) {
     return event.image_url
   }
   
-  // Use event ID to ensure consistent image selection for same event
-  const eventIdNumber = parseInt(event.id.replace(/\D/g, ''), 10) || 0
-  const imageIndex = eventIdNumber % eventImages.length
-  return eventImages[imageIndex]
+  // Determine image category based on event properties
+  let imageCategory = 'default'
+  if (event.industry?.toLowerCase().includes('media')) {
+    imageCategory = 'media'
+  } else if (event.industry?.toLowerCase().includes('finance')) {
+    imageCategory = 'finance'
+  } else if (event.type?.toLowerCase().includes('networking')) {
+    imageCategory = 'networking'
+  }
+  // Get available images for this category
+  const categoryImages = eventImagesByType[imageCategory as keyof typeof eventImagesByType] || eventImagesByType.default
+  // Find an unused image from this category
+  const availableImages = categoryImages.filter((img: string) => !usedImages.has(img))
+  
+  let selectedImage: string
+  
+  if (availableImages.length > 0) {
+    // Use hash-based selection from available images
+    let hash = 0
+    for (let i = 0; i < event.id.length; i++) {
+      const char = event.id.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash
+    }
+    const imageIndex = Math.abs(hash) % availableImages.length
+    selectedImage = availableImages[imageIndex]
+  } else {
+    // If all images in category are used, reset and use any image
+    usedImages.clear()
+    let hash = 0
+    for (let i = 0; i < event.id.length; i++) {
+      const char = event.id.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash
+    }
+    const imageIndex = Math.abs(hash) % categoryImages.length
+    selectedImage = categoryImages[imageIndex]
+  }
+  
+  // Mark this image as used
+  usedImages.add(selectedImage)
+  
+  return selectedImage
 }
 
 // Price range mappings for display
@@ -526,13 +585,13 @@ return (
 
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.sub_industry} event in {event.city}</p>
 
-                <div className="flex items-center justify-between mb-3">
+          {/*       <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-gray-500">Hosted by {event.host_name}</div>
                   {event.user_registered && (
                     <Badge className="bg-green-100 text-green-800 text-xs">✓ Registered</Badge>
                   )}
                 </div>
-                <Button
+           */}      <Button
                   className={`w-full mt-3 ${
                     isFull && !event.user_registered
                       ? "bg-gray-400 cursor-not-allowed text-white"
