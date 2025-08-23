@@ -45,7 +45,7 @@ export default function HomePage() {
       <header className="border-b bg-white/90 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
               <Image
                 src="/images/o3p-logo-circle.png"
                 alt="Our Third Place"
@@ -56,7 +56,7 @@ export default function HomePage() {
               <span className="text-2xl font-light text-[#1b1f2c]" style={{ fontFamily: "Josefin Sans, sans-serif" }}>
                 OUR THIRD PLACE
               </span>
-            </div>
+            </Link>
             <nav className="hidden md:flex items-center space-x-8">
               <Link href="/about" className="text-gray-700 hover:text-[#1b1f2c] transition-colors">
                 About
@@ -73,17 +73,30 @@ export default function HomePage() {
               <Link href="/login" className="text-gray-700 hover:text-[#1b1f2c] transition-colors">
                 Login
               </Link>
+              <Link href="/signup">
+                <Button className="bg-[#1b1f2c] hover:bg-[#1b1f2c]/90 text-white">
+                  Sign Up
+                </Button>
+              </Link>
             </nav>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden">
-              <Link href="/dashboard">
+            <div className="md:hidden flex gap-2">
+              <Link href="/login">
                 <Button
                   variant="outline"
                   size="sm"
                   className="text-[#1b1f2c] border-[#1b1f2c] hover:bg-[#1b1f2c] hover:text-white bg-transparent"
                 >
-                  Member Portal
+                  Login
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button
+                  size="sm"
+                  className="bg-[#1b1f2c] hover:bg-[#1b1f2c]/90 text-white"
+                >
+                  Sign Up
                 </Button>
               </Link>
             </div>

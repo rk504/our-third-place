@@ -1,16 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"magic" | "password">("magic")
+  const [mode, setMode] = useState<"magic" | "password">("password") // Default to password for signup users
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -21,7 +21,16 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false)
 
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createSupabaseBrowserClient()
+
+  // Pre-fill email if provided in URL
+  useEffect(() => {
+    const emailParam = searchParams.get('email')
+    if (emailParam) {
+      setEmail(decodeURIComponent(emailParam))
+    }
+  }, [searchParams])
 
   // Magic link login
   const onMagicLogin = async (e: React.FormEvent) => {
@@ -32,13 +41,14 @@ export default function LoginPage() {
     setMagicSent(false)
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
-      })
+              const nextUrl = searchParams.get('next') || '/dashboard'
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: false,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${nextUrl}`,
+          },
+        })
       if (error) {
         // friendly messages; never navigate
         if (
@@ -88,8 +98,10 @@ export default function LoginPage() {
         }
         return
       }
-      toast.success("Login successful! Redirecting...")
-      router.push("/dashboard")
+              const nextUrl = searchParams.get('next') || '/dashboard'
+        
+        toast.success("Login successful! Redirecting...")
+        router.replace(nextUrl)
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Login failed"
       setError(msg)

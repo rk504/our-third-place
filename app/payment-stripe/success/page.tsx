@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check, X, Heart, MessageSquare, Calendar, User } from "lucide-react"
 import { Footer } from "@/components/footer"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams()
@@ -25,6 +26,53 @@ function PaymentSuccessContent() {
   const userAdditionalPlaces = searchParams.get("additionalPlaces") || ""
   const userSlackEmail = searchParams.get("slackEmail") || ""
   const userHowDidYouHear = searchParams.get("howDidYouHear") || ""
+  const [needsLogin, setNeedsLogin] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  
+  const supabase = createSupabaseBrowserClient()
+
+  const handleResendVerification = async () => {
+    if (!userId || resendCooldown > 0) return
+    
+    try {
+      // Get user email from profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', userId)
+        .single()
+      
+      if (profile?.email) {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email: profile.email,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
+        })
+        
+        if (error) {
+          console.error('Resend error:', error)
+          toast.error('Failed to resend verification email')
+        } else {
+          toast.success('Verification email sent!')
+          setResendCooldown(60)
+          const timer = setInterval(() => {
+            setResendCooldown(prev => {
+              if (prev <= 1) {
+                clearInterval(timer)
+                return 0
+              }
+              return prev - 1
+            })
+          }, 1000)
+        }
+      }
+    } catch (error) {
+      console.error('Resend verification error:', error)
+      toast.error('Failed to resend verification email')
+    }
+  }
 
   // Debug: Log all URL parameters to see what Stripe is sending
   console.log("=== SUCCESS PAGE DEBUG ===")
@@ -44,13 +92,54 @@ function PaymentSuccessContent() {
       }
 
       try {
+        // First, check if user is already logged in
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        
+        console.log('Current logged in user:', currentUser?.id)
+        console.log('Expected userId from URL:', userId)
+        
+        // If not logged in or wrong user, we need them to log in
+        if (!currentUser || currentUser.id !== userId) {
+          console.log('User not logged in or wrong user - they need to log in')
+          
+          // Show success page but with login prompt
+          setPaymentStatus('success')
+          setNeedsLogin(true)
+          setIsVerifying(false)
+          
+          // We'll add a login prompt in the UI
+          return
+        }
+
         // Skip backend payment verification for direct Stripe links
         // Stripe handles payment verification on their end
         console.log('Proceeding with userId:', userId)
         setPaymentStatus('success')
         
+        // Send verification email after successful payment
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('user_id', userId)
+          .single()
+        
+        if (profile?.email) {
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: profile.email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`
+            }
+          })
+          
+          if (resendError) {
+            console.error('Failed to send verification email:', resendError)
+          } else {
+            console.log('Verification email sent successfully')
+          }
+        }
+        
         // Fetch membership tier from Supabase
-        const supabase = createSupabaseBrowserClient()
         const { data: membership, error: membershipError } = await supabase
           .from('memberships')
           .select('tier')
@@ -152,14 +241,47 @@ function PaymentSuccessContent() {
                 <Check className="w-8 h-8 text-green-600" />
               </div>
               <CardTitle className="text-2xl font-bold text-gray-900">
-                Welcome to Our Third Place!<br/> Make sure to verify your email.
+                Payment Successful! 🎉 Time to verify your email.
               </CardTitle>
               <p className="text-gray-600">
-                Your {membershipTier === 'annual' ? 'annual' : 'monthly'} membership is now active. Let's get you set up!
+                Your {membershipTier === 'annual' ? 'annual' : 'monthly'} membership payment is complete. Now let's verify your email to activate your account.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* 1. Slack Communities */}
+              {/* Email Verification Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-blue-900 mb-3">📧 Verify Your Email Address</h3>
+                <p className="text-blue-800 mb-4">
+                  We've sent a verification email to <strong>{decodeURIComponent(userSlackEmail)}</strong>
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-blue-700">Check your email inbox (and spam folder)</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-blue-700">Click the verification link in the email</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-blue-700">You'll be taken to your personalized welcome page</span>
+                  </div>
+                </div>
+                
+                <div className="mt-4 pt-4 border-t border-blue-200">
+                  <Button 
+                    onClick={handleResendVerification}
+                    variant="outline" 
+                    className="border-blue-300 text-blue-700 bg-transparent"
+                    disabled={resendCooldown > 0}
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Verification Email'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* What's Coming Next */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
                   <MessageSquare className="w-5 h-5 mr-2" />
@@ -243,18 +365,15 @@ function PaymentSuccessContent() {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button
-                  className="flex-1 bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90 text-white"
-                  onClick={() => (window.location.href = "/dashboard")}
-                >
-                  Go to Dashboard
+                <Button asChild className="flex-1 bg-gradient-to-r from-[#1b1f2c] to-[#646d59] hover:from-[#1b1f2c]/90 hover:to-[#646d59]/90 text-white">
+                  <Link href="/welcome">
+                    Go to Welcome Page
+                  </Link>
                 </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 border-gray-300 bg-transparent"
-                  onClick={() => (window.location.href = "/profile")}
-                >
-                  Complete Profile Later
+                <Button asChild variant="outline" className="flex-1 border-gray-300 bg-transparent">
+                  <Link href="/login">
+                    Log In Instead
+                  </Link>
                 </Button>
               </div>
 
