@@ -1,18 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-
-// Stripe integration temporarily disabled for Vercel build
-// TODO: Re-enable when Stripe environment variables are configured
-
-export async function POST(request: NextRequest) {
-  return NextResponse.json(
-    { error: 'Stripe integration temporarily disabled' },
-    { status: 503 }
-  )
-}
-
-/*
-// Original Stripe implementation - uncomment when ready to use
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { NextRequest, NextResponse } from "next/server"
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -59,6 +46,7 @@ export async function POST(request: NextRequest) {
       SAVE20: { type: "fixed", value: 20, description: "$20 off" },
       EARLYBIRD: { type: "percentage", value: 15, description: "15% early bird discount" },
       FRIEND25: { type: "fixed", value: 25, description: "$25 friend referral discount" },
+      KAYNAYPULLS: { type: "percentage", value: 100, description: "You know KayNay, sick!" },
     }
 
     let appliedDiscount = null
@@ -117,4 +105,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-*/
