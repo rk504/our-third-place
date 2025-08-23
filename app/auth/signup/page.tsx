@@ -164,7 +164,7 @@ function AuthSignupPageContent() {
           paymentPlan: formData.paymentPlan, // Add payment plan to URL params
         })
         
-        const paymentUrl = `/payment?${params.toString()}`
+        const paymentUrl = `/payment-stripe?${params.toString()}`
         console.log("Redirecting to:", paymentUrl)
         
         router.push(paymentUrl)

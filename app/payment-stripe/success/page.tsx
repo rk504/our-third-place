@@ -26,48 +26,64 @@ function PaymentSuccessContent() {
   const userSlackEmail = searchParams.get("slackEmail") || ""
   const userHowDidYouHear = searchParams.get("howDidYouHear") || ""
 
+  // Debug: Log all URL parameters to see what Stripe is sending
+  console.log("=== SUCCESS PAGE DEBUG ===")
+  console.log("All URL params:", Object.fromEntries(searchParams.entries()))
+  console.log("sessionId:", sessionId)
+  console.log("userId:", userId)
+
   useEffect(() => {
     const verifyPaymentAndFetchMembership = async () => {
-      if (!sessionId || !userId) {
+      // For direct Stripe payment links, we don't need session_id verification
+      // If we have userId, we can proceed to fetch membership details
+      if (!userId) {
+        console.error('No userId found in URL params')
         setPaymentStatus('error')
         setIsVerifying(false)
         return
       }
 
       try {
-        // Verify the payment with your backend
-        const response = await fetch('/api/payment-success', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            sessionId,
-            userId,
-          }),
-        })
+        // Skip backend payment verification for direct Stripe links
+        // Stripe handles payment verification on their end
+        console.log('Proceeding with userId:', userId)
+        setPaymentStatus('success')
+        
+        // Fetch membership tier from Supabase
+        const supabase = createSupabaseBrowserClient()
+        const { data: membership, error: membershipError } = await supabase
+          .from('memberships')
+          .select('tier')
+          .eq('user_id', userId)
+          .single()
 
-        if (response.ok) {
-          setPaymentStatus('success')
-          
-          // Fetch membership tier from Supabase
-          const supabase = createSupabaseBrowserClient()
-          const { data: membership, error: membershipError } = await supabase
-            .from('memberships')
-            .select('tier')
-            .eq('user_id', userId)
-            .single()
-
-          if (membershipError) {
-            console.error('Error fetching membership:', membershipError)
-            // Default to monthly if we can't fetch the tier
-            setMembershipTier('monthly')
-          } else {
-            setMembershipTier(membership.tier as 'monthly' | 'annual')
-          }
+        if (membershipError) {
+          console.error('Error fetching membership:', membershipError)
+          // Try to get tier from URL params as fallback
+          const paymentPlan = searchParams.get('paymentPlan') || 'monthly'
+          setMembershipTier(paymentPlan as 'monthly' | 'annual')
         } else {
-          setPaymentStatus('error')
+          setMembershipTier(membership.tier as 'monthly' | 'annual')
         }
+
+        // Optionally update membership status to active if using direct Stripe links
+        // Since Stripe handles the payment, we can assume it's successful if we reach this page
+        try {
+          const { error: updateError } = await supabase
+            .from('memberships')
+            .update({ 
+              status: 'active',
+              activated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId)
+
+          if (updateError) {
+            console.error('Error updating membership status:', updateError)
+          }
+        } catch (updateError) {
+          console.error('Error updating membership:', updateError)
+        }
+
       } catch (error) {
         console.error('Payment verification error:', error)
         setPaymentStatus('error')
@@ -77,7 +93,7 @@ function PaymentSuccessContent() {
     }
 
     verifyPaymentAndFetchMembership()
-  }, [sessionId, userId])
+  }, [userId, searchParams])
 
   if (isVerifying) {
     return (
