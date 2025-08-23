@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server"
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const next = searchParams.get('next') ?? '/welcome'
 
   if (code) {
     const supabase = await createSupabaseServerClient()
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
       if (type === 'recovery') {
         return NextResponse.redirect(`${origin}/auth/reset-password`)
       }
-      return NextResponse.redirect(`${origin}${next}`)
+      // Redirect to welcome page after successful email verification
+      return NextResponse.redirect(`${origin}/welcome`)
     }
   }
 
