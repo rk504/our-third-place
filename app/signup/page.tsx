@@ -595,25 +595,6 @@ export default function SignUpPage() {
                   </div>
                 )}
 
-                {/* Debug: Show form validation status */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-2">🔍 Debug: Form Status</h4>
-                  <div className="text-sm text-blue-700 space-y-1">
-                    <p>Name: {formData.name ? '✅' : '❌'} "{formData.name}"</p>
-                    <p>Company: {formData.company ? '✅' : '❌'} "{formData.company}"</p>
-                    <p>LinkedIn: {formData.linkedin ? '✅' : '❌'} "{formData.linkedin}"</p>
-                    <p>Birthday: {formData.birthday ? '✅' : '❌'} "{formData.birthday}"</p>
-                    <p>Location: {formData.location ? '✅' : '❌'} "{formData.location}"</p>
-                    <p>Payment Plan: {formData.paymentPlan ? '✅' : '❌'} "{formData.paymentPlan}"</p>
-                    <p>Email: {formData.slackEmail ? '✅' : '❌'} "{formData.slackEmail}"</p>
-                    <p>Password: {formData.password ? '✅' : '❌'} "{formData.password ? '***' : ''}"</p>
-                    <p>Confirm Password: {formData.confirmPassword ? '✅' : '❌'} "{formData.confirmPassword ? '***' : ''}"</p>
-                    <p>How did you hear: {formData.howDidYouHear ? '✅' : '➖'} "{formData.howDidYouHear}"</p>
-                    <p>Sub Industries: {selectedSubIndustries.length > 0 ? '✅' : '➖'} [{selectedSubIndustries.join(', ')}]</p>
-                    <p><strong>Button Disabled: {(isSubmitting || !formData.name || !formData.company || !formData.linkedin || !formData.birthday || !formData.location || !formData.paymentPlan || !formData.slackEmail || !formData.password || !formData.confirmPassword) ? '🔴 YES' : '🟢 NO'}</strong></p>
-                  </div>
-                </div>
-
                 {/* Price Summary */}
                 {totalPrice && (
                   <div className="bg-[#dddbd4] p-4 rounded-lg">

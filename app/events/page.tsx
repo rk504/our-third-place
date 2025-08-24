@@ -27,9 +27,9 @@ type Event = {
   status: string
   image_url: string | null
   created_at: string // timestamptz
+  capacity: number // From database
   // Computed fields for UI
   current_attendees?: number
-  capacity?: number
   host_name?: string
   user_registered?: boolean
 }
@@ -309,7 +309,6 @@ useEffect(() => {
           return {
             ...event,
             current_attendees: count || 0,
-            capacity: 12, // Default capacity since it's not in the schema yet
             host_name: 'Host', // Default host name since host info isn't in schema yet
             user_registered: userRegistered
           }
@@ -668,7 +667,7 @@ return (
                   <div className="flex items-center">
                     <Users className="w-4 h-4 mr-2" />
                     <span>
-                      {event.current_attendees || 0}/{event.capacity || 'TBD'} attendees
+                      {event.current_attendees || 0}/{event.capacity} attendees
                     </span>
                   </div>
                   <div className="flex items-center">
@@ -801,7 +800,7 @@ return (
                     <div>
                       <p className="font-medium">Attendees</p>
                       <p className="text-sm">
-                        {selectedEvent.current_attendees || 0} of {selectedEvent.capacity || 'TBD'} spots filled
+                        {selectedEvent.current_attendees || 0} of {selectedEvent.capacity} spots filled
                       </p>
                     </div>
                   </div>
