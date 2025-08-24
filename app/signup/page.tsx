@@ -31,11 +31,10 @@ const financeSubIndustries = [
   "Banking",
   "Credit & Lending",
 ]
-
-const locations = [
+// to update when we get new chapters - to automate in v2? This can easily pull from a table in backend if we're hyperscaling!
+const locations = [ 
   "AMSTERDAM",
   "ATLANTA",
-  "ATLANTA, GEORGIA",
   "AUSTIN",
   "BOCA RATON / BROWARD COUNTY",
   "BOSTON",
@@ -58,7 +57,7 @@ const locations = [
   "MIAMI",
   "MIDDLESEX COUNTY",
   "NASHVILLE",
-  "NEW YORK",
+  "NEW ORLEANS",
   "NEW YORK CITY",
   "ORLANDO",
   "PHILADELPHIA",

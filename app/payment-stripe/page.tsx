@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft, Check, X } from "lucide-react"
 import { Footer } from "@/components/footer"
 
-// Predefined discount codes - using stripe for discount codes for now, this isn't working yet.
+// Predefined discount codes - may have to use stripe for best functionality - half off first month promo for example. To set up.
 const discountCodes = {
   WELCOME10: { type: "percentage", value: 10, description: "10% off first membership" },
   SAVE20: { type: "fixed", value: 20, description: "$20 off" },
   EARLYBIRD: { type: "percentage", value: 15, description: "15% early bird discount" },
   FRIEND25: { type: "fixed", value: 25, description: "$25 friend referral discount" },
+  WELCOME50: { type: "percentage", value: 50, description: "50% off first membership" },
   KAYNAYPULLS: { type: "percentage", value: 100, description: "You know KayNay, sick!" },
 }
 
