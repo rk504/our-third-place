@@ -135,18 +135,26 @@ function DashboardPageContent() {
         const now = new Date()
         console.log("Exact current moment:", now)
         
-        // First, fetch user's confirmed event registrations
-        const { data: registrations, error: registrationsError } = await supabase
+        // First, fetch ALL user's event registrations for debugging
+        const { data: allUserRegistrations, error: allRegError } = await supabase
           .from("event_registrations")
-          .select("id, status, created_at, event_id")
+          .select("id, status, created_at, event_id, cancelled_at")
           .eq("user_id", user.id)
-          .eq("status", "confirmed")
 
-        console.log("User registrations:", registrations)
-        console.log("Registrations error:", registrationsError)
+        console.log("=== ALL USER REGISTRATIONS DEBUG ===")
+        console.log("All user registrations:", allUserRegistrations)
+        console.log("All registrations error:", allRegError)
+        
+        // Filter for active registrations (registered and not cancelled)
+        const registrations = allUserRegistrations?.filter(reg => 
+          reg.status === 'registered'
+        ) || []
 
-        if (registrationsError || !registrations) {
-          console.error("Failed to fetch registrations:", registrationsError)
+        console.log("Filtered active registrations:", registrations)
+        console.log("Registration count:", registrations.length)
+
+        if (allRegError) {
+          console.error("Failed to fetch registrations:", allRegError)
           setDashboardData({
             profile: null,
             membership: null,
@@ -221,19 +229,15 @@ function DashboardPageContent() {
           return new Date(b.events.event_date).getTime() - new Date(a.events.event_date).getTime()
         })
 
-        // Count total events attended (only past events with confirmed status)
-        const { count: totalEventsAttended, error: countError } = await supabase
-          .from("event_registrations")
-          .select(`
-            *,
-            events!inner (event_date)
-          `, { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("status", "confirmed")
-          .lt("events.event_date", now.toISOString())
+        // Count total events attended (filter from our already fetched data)
+        const pastRegistrations = allRegistrations?.filter(registration => {
+          if (!registration.events) return false
+          const eventDate = new Date(registration.events.event_date)
+          return eventDate < now
+        }) || []
         
-        console.log("Total events attended count:", totalEventsAttended)
-        console.log("Count query used cutoff time:", now.toISOString())
+        const totalEventsAttended = pastRegistrations.length
+        console.log("Total past events calculated:", totalEventsAttended)
 
         const data: DashboardData = {
           profile: profile ?? null,

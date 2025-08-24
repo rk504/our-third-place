@@ -6,10 +6,11 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Users, MapPin, Building2, DollarSign, Camera, Utensils, Heart, Search, Filter, Clock, ArrowLeft, X, ChefHat } from 'lucide-react'
+import { Calendar, Users, MapPin, Building2, DollarSign, Camera, Utensils, Heart, Filter, Clock, ArrowLeft, X, ChefHat } from 'lucide-react'
 import { Footer } from "@/components/footer"
 import AppHeader from "@/components/AppHeader"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { registerForEvent, deregisterFromEvent } from "@/lib/supabase/events"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -37,25 +38,31 @@ type Event = {
 const eventImagesByType = {
   media: [
     "/images/media-networking-hero.jpg",
-    "/images/intimate-conversation.jpg",
     "/images/img-1513_720.jpg",
     "/images/img_3738_720.jpg",
     "/images/img_3756_720.jpg",
     "/images/img_3728_720.jpg",
+    "/images/img_3748_720.jpg",
+    "/images/img_3759_720.jpg",
+    "/images/20250612_mdc_brandlaunch_lowres-12_720.jpg"
   ],
   finance: [
     "/images/dinner-toast.jpg",
     "/images/genuine-connections.jpg",
     "/images/20250612_mdc_brandlaunch_lowres-21_720.jpg",
     "/images/img_0513_720.jpg",
-    "/images/img_1793_720.jpg"
+    "/images/img_1793_720.jpg",
+    "/images/img_3725__1__720.jpg",
+    "/images/img_5837_720.jpg"
   ],
   networking: [
     "/images/cocktail-networking.jpg",
     "/images/824261c4-be46-4b7e-b7d4-c9599331d348_720.jpg",
     "/images/20250612_mdc_brandlaunch_lowres-5_720.jpg",
     "/images/img_2786_720.jpg",
-    "/images/tezza-4130_720.jpg"
+    "/images/tezza-4130_720.jpg",
+    "/images/img_3777_720.jpg",
+    "/images/img_3793_720.jpg"
   ],
   default: [
     "/images/park-picnic.jpg",
@@ -65,11 +72,28 @@ const eventImagesByType = {
   ]
 }
 
-// Track which images have been used to prevent duplicates
-const usedImages = new Set<string>()
+// Enhanced hash function for better distribution
+const enhancedHash = (str: string): number => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  // Add extra mixing for better distribution
+  hash ^= hash >>> 16
+  hash *= 0x85ebca6b
+  hash ^= hash >>> 13
+  hash *= 0xc2b2ae35
+  hash ^= hash >>> 16
+  return Math.abs(hash)
+}
 
-// Function to get appropriate image for event
-const getEventImage = (event: Event) => {
+// Track used images per category to ensure better distribution
+const usedImages = new Map<string, Set<string>>()
+
+// Function to get appropriate image for event with better distribution
+const getEventImage = (event: Event, allEvents?: Event[]) => {
   if (event.image_url) {
     return event.image_url
   }
@@ -83,38 +107,37 @@ const getEventImage = (event: Event) => {
   } else if (event.type?.toLowerCase().includes('networking')) {
     imageCategory = 'networking'
   }
+  
   // Get available images for this category
   const categoryImages = eventImagesByType[imageCategory as keyof typeof eventImagesByType] || eventImagesByType.default
-  // Find an unused image from this category
-  const availableImages = categoryImages.filter((img: string) => !usedImages.has(img))
   
-  let selectedImage: string
-  
-  if (availableImages.length > 0) {
-    // Use hash-based selection from available images
-    let hash = 0
-    for (let i = 0; i < event.id.length; i++) {
-      const char = event.id.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash
-    }
-    const imageIndex = Math.abs(hash) % availableImages.length
-    selectedImage = availableImages[imageIndex]
-  } else {
-    // If all images in category are used, reset and use any image
-    usedImages.clear()
-    let hash = 0
-    for (let i = 0; i < event.id.length; i++) {
-      const char = event.id.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash
-    }
-    const imageIndex = Math.abs(hash) % categoryImages.length
-    selectedImage = categoryImages[imageIndex]
+  // Initialize tracking for this category if not exists
+  if (!usedImages.has(imageCategory)) {
+    usedImages.set(imageCategory, new Set())
   }
   
-  // Mark this image as used
-  usedImages.add(selectedImage)
+  const usedInCategory = usedImages.get(imageCategory)!
+  
+  // If all images in category are used, reset the tracking
+  if (usedInCategory.size >= categoryImages.length) {
+    usedInCategory.clear()
+  }
+  
+  // Use enhanced hash with event ID and title for better uniqueness
+  const hashInput = `${event.id}-${event.title}-${imageCategory}`
+  const hash = enhancedHash(hashInput)
+  
+  // Find an unused image, starting from the hash position
+  let imageIndex = hash % categoryImages.length
+  let attempts = 0
+  
+  while (usedInCategory.has(categoryImages[imageIndex]) && attempts < categoryImages.length) {
+    imageIndex = (imageIndex + 1) % categoryImages.length
+    attempts++
+  }
+  
+  const selectedImage = categoryImages[imageIndex]
+  usedInCategory.add(selectedImage)
   
   return selectedImage
 }
@@ -128,16 +151,68 @@ $$$$: "Fine Dining ($80+)",
 Free: "Free Event",
 }
 
+// Cities based on actual event data (normalized to match database values)
+const cities = [
+  "Amsterdam",
+  "Atlanta", 
+  "Austin",
+  "Boca Raton / Broward County",
+  "Boston",
+  "Charleston",
+  "Charlotte", 
+  "Chicago",
+  "Dallas",
+  "Denver",
+  "Detroit",
+  "Houston",
+  "Jacksonville",
+  "London",
+  "Los Angeles",
+  "Miami",
+  "Nashville",
+  "New Orleans", 
+  "New York",
+  "New York City",
+  "Orlando",
+  "Philadelphia",
+  "Salt Lake City",
+  "San Diego",
+  "San Francisco",
+  "Tampa",
+  "Toronto"
+]
+
+// NYC neighborhoods (what was previously called "cities")
+const nycNeighborhoods = [
+  "Midtown",
+  "Gramercy", 
+  "SoHo",
+  "Union Square",
+  "Chelsea",
+  "DUMBO",
+  "Midtown West",
+  "Flatiron",
+  "Lower East Side",
+  "Upper East Side",
+  "Upper West Side",
+  "Tribeca",
+  "West Village",
+  "East Village",
+  "Financial District"
+]
+
 export default function EventsPage() {
 const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
-const [searchTerm, setSearchTerm] = useState("")
 const [selectedType, setSelectedType] = useState("all")
 const [selectedIndustry, setSelectedIndustry] = useState("all")
 const [selectedSubIndustry, setSelectedSubIndustry] = useState("all")
 const [selectedCity, setSelectedCity] = useState("all")
+const [selectedNeighborhood, setSelectedNeighborhood] = useState("all")
 const [events, setEvents] = useState<Event[]>([])
 const [loading, setLoading] = useState(true)
 const [currentUser, setCurrentUser] = useState<any>(null)
+const [showRegistrationModal, setShowRegistrationModal] = useState(false)
+const [registeredEventTitle, setRegisteredEventTitle] = useState('')
 const router = useRouter()
 const supabase = createSupabaseBrowserClient()
 
@@ -186,25 +261,49 @@ useEffect(() => {
       // Get registration counts for each event
       const eventsWithCounts = await Promise.all(
         (eventsData || []).map(async (event) => {
-          // Count only confirmed registrations for capacity
-          const { count } = await supabase
+          // Count registrations - try simpler query first
+          const { data: allEventRegs, error: countError } = await supabase
             .from('event_registrations')
-            .select('*', { count: 'exact', head: true })
+            .select('status, cancelled_at')
             .eq('event_id', event.id)
-            .eq('status', 'confirmed')
+
+          console.log(`All registrations for ${event.title}:`, allEventRegs, countError)
+          
+          // Count active registrations in JavaScript
+          const count = allEventRegs?.filter(reg => 
+            reg.status === 'registered'
+          ).length || 0
+          
+          console.log(`Active registration count for ${event.title}:`, count)
 
           // Check if current user is registered (only confirmed registrations)
           let userRegistered = false
           if (user) {
-            const { data: registration } = await supabase
+            // First check ALL registrations for this user/event for debugging
+            const { data: allRegs } = await supabase
               .from('event_registrations')
-              .select('id, status')
+              .select('id, status, cancelled_at')
               .eq('event_id', event.id)
               .eq('user_id', user.id)
-              .eq('status', 'confirmed')
-              .single()
+
+            console.log(`User registrations for event ${event.title}:`, allRegs)
+
+            // Try a simpler query first
+            const { data: registration, error: regError } = await supabase
+              .from('event_registrations')
+              .select('id, status, cancelled_at')
+              .eq('event_id', event.id)
+              .eq('user_id', user.id)
+              .maybeSingle()
+
+            console.log(`Registration query for ${event.title}:`, { registration, regError })
             
-            userRegistered = !!registration
+            // Check if registration is active (registered and not cancelled)
+            const isActive = registration && 
+              registration.status === 'registered'
+            
+            console.log(`Is active registration for ${event.title}:`, isActive)
+            userRegistered = !!isActive
           }
 
           return {
@@ -247,14 +346,8 @@ const handleEventRegistration = async (event: Event) => {
 
   try {
     if (event.user_registered) {
-      // Deregister user - update status instead of deleting
-      const { error } = await supabase
-        .from('event_registrations')
-        .update({ status: 'cancelled' })
-        .eq('event_id', event.id)
-        .eq('user_id', currentUser.id)
-
-      if (error) throw error
+      // Deregister using RPC function
+      await deregisterFromEvent(supabase, event.id)
 
       // Update local state
       setEvents(events.map(e => 
@@ -265,35 +358,8 @@ const handleEventRegistration = async (event: Event) => {
 
       toast.success('Successfully cancelled registration!')
     } else {
-      // Check if user has a cancelled registration to reactivate
-      const { data: existingRegistration } = await supabase
-        .from('event_registrations')
-        .select('id')
-        .eq('event_id', event.id)
-        .eq('user_id', currentUser.id)
-        .single()
-
-      if (existingRegistration) {
-        // Reactivate existing registration
-        const { error } = await supabase
-          .from('event_registrations')
-          .update({ status: 'confirmed' })
-          .eq('event_id', event.id)
-          .eq('user_id', currentUser.id)
-
-        if (error) throw error
-      } else {
-        // Create new registration
-        const { error } = await supabase
-          .from('event_registrations')
-          .insert({
-            event_id: event.id,
-            user_id: currentUser.id,
-            status: 'confirmed'
-          })
-
-        if (error) throw error
-      }
+      // Register using RPC function
+      await registerForEvent(supabase, event.id)
 
       // Update local state
       setEvents(events.map(e => 
@@ -302,7 +368,9 @@ const handleEventRegistration = async (event: Event) => {
           : e
       ))
 
-      toast.success('Successfully registered for event!')
+      // Show registration success modal
+      setRegisteredEventTitle(event.title)
+      setShowRegistrationModal(true)
     }
   } catch (error) {
     console.error('Registration error:', error)
@@ -310,19 +378,28 @@ const handleEventRegistration = async (event: Event) => {
   }
 }
 
-// Filter events based on search and filters
+// Filter events based on filters (no search)
 const filteredEvents = events.filter((event) => {
-  const matchesSearch =
-    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.sub_industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.location.toLowerCase().includes(searchTerm.toLowerCase())
-  const matchesType = selectedType === "all" || event.type === selectedType
+  // Case-insensitive type matching
+  const matchesType = selectedType === "all" || event.type?.toLowerCase() === selectedType.toLowerCase()
+  
+  // Industry matching
   const matchesIndustry = selectedIndustry === "all" || event.industry === selectedIndustry
+  
+  // Sub-industry matching (handle null values)
   const matchesSubIndustry = selectedSubIndustry === "all" || event.sub_industry === selectedSubIndustry
-  const matchesCity = selectedCity === "all" || event.city === selectedCity
+  
+  // City matching - normalize city names for comparison
+  const normalizeCity = (city: string) => city?.toUpperCase().replace(/\s+/g, ' ').trim()
+  const eventCityNormalized = normalizeCity(event.city || '')
+  const selectedCityNormalized = normalizeCity(selectedCity)
+  const matchesCity = selectedCity === "all" || eventCityNormalized === selectedCityNormalized
+  
+  // Neighborhood matching - check location field for NYC neighborhoods
+  const matchesNeighborhood = selectedNeighborhood === "all" || 
+    event.location?.toLowerCase().includes(selectedNeighborhood.toLowerCase())
 
-  return matchesSearch && matchesType && matchesIndustry && matchesSubIndustry && matchesCity
+  return matchesType && matchesIndustry && matchesSubIndustry && matchesCity && matchesNeighborhood
 })
 
 const getIndustryColor = (industry: string) => {
@@ -454,22 +531,10 @@ return (
         </CardContent>
       </Card>
 
-      {/* Search and Filters */}
+      {/* Filters */}
       <Card className="bg-white/90 backdrop-blur-sm border-2 shadow-lg mb-8">
         <CardContent className="p-6">
           <div className="flex flex-col gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search events..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#646d59] focus:border-transparent"
-              />
-            </div>
-
             {/* Filters Row */}
             <div className="flex flex-wrap gap-4 items-center">
               <div className="flex items-center space-x-2">
@@ -485,9 +550,9 @@ return (
               >
                 <option value="all">All Types</option>
                 <option value="dinner">Dinner</option>
-                <option value="networking">Networking</option>
-                <option value="workshop">Workshop</option>
-                <option value="brunch">Brunch</option>
+                <option value="lunch">Lunch</option>
+                <option value="after_hours">After Hours</option>
+                <option value="roundtable">Roundtable</option>
               </select>
 
               {/* Industry Filter */}
@@ -509,15 +574,15 @@ return (
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#646d59] focus:border-transparent text-sm"
               >
                 <option value="all">All Sub-Industries</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Investment Banking">Investment Banking</option>
+                <option value="Streaming">Streaming</option>
+                <option value="VC">VC</option>
+                <option value="Investment">Investment</option>
                 <option value="AdTech">AdTech</option>
                 <option value="PR">PR</option>
+                <option value="Networking">Networking</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Investment Banking">Investment Banking</option>
                 <option value="Fintech">Fintech</option>
-                <option value="Art & Culture">Art & Culture</option>
-                <option value="Wellness">Wellness</option>
-                <option value="Leadership">Leadership</option>
-                <option value="Private Equity">Private Equity</option>
               </select>
 
               {/* City Filter */}
@@ -527,14 +592,21 @@ return (
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#646d59] focus:border-transparent text-sm"
               >
                 <option value="all">All Cities</option>
-                <option value="Midtown">Midtown</option>
-                <option value="Gramercy">Gramercy</option>
-                <option value="SoHo">SoHo</option>
-                <option value="Union Square">Union Square</option>
-                <option value="Chelsea">Chelsea</option>
-                <option value="DUMBO">DUMBO</option>
-                <option value="Midtown West">Midtown West</option>
-                <option value="Flatiron">Flatiron</option>
+                {cities.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+
+              {/* NYC Neighborhood Filter */}
+              <select
+                value={selectedNeighborhood}
+                onChange={(e) => setSelectedNeighborhood(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#646d59] focus:border-transparent text-sm"
+              >
+                <option value="all">All Neighborhoods</option>
+                {nycNeighborhoods.map((neighborhood) => (
+                  <option key={neighborhood} value={neighborhood}>{neighborhood}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -644,17 +716,17 @@ return (
         <Card className="bg-white/90 backdrop-blur-sm border-2 shadow-lg">
           <CardContent className="p-8 text-center">
             <div className="text-gray-400 mb-4">
-              <Search className="w-16 h-16 mx-auto" />
+              <Filter className="w-16 h-16 mx-auto" />
             </div>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No events found</h3>
-            <p className="text-gray-600 mb-4">Try adjusting your search terms or filters to find more events.</p>
+            <p className="text-gray-600 mb-4">Try adjusting your filters to find more events.</p>
             <Button
               onClick={() => {
-                setSearchTerm("")
                 setSelectedType("all")
                 setSelectedIndustry("all")
                 setSelectedSubIndustry("all")
                 setSelectedCity("all")
+                setSelectedNeighborhood("all")
               }}
               variant="outline"
             >
@@ -786,6 +858,65 @@ return (
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Registration Success Modal */}
+      {showRegistrationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setShowRegistrationModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">You're Registered! 🎉</h2>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-lg font-medium text-gray-900 mb-2">
+                  Successfully registered for
+                </p>
+                <p className="text-xl font-bold text-[#646d59] mb-4">
+                  {registeredEventTitle}
+                </p>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p>Check your dashboard for event details.</p>
+                  <p>We'll send you a reminder email 48 hours before the event.</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Button
+                  onClick={() => {
+                    setShowRegistrationModal(false)
+                    router.push('/dashboard')
+                  }}
+                  className="w-full bg-[#646d59] hover:bg-[#646d59]/90 text-white"
+                >
+                  View Dashboard
+                </Button>
+                <Button
+                  onClick={() => setShowRegistrationModal(false)}
+                  variant="outline"
+                  className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Got it!
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
