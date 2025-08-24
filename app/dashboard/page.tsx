@@ -73,15 +73,18 @@ function DashboardPageContent() {
   const supabase = createSupabaseBrowserClient()
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (user?: any) => {
       try {
-        // Check if user is authenticated
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        
-        if (authError || !user) {
-          console.log("No authenticated user, redirecting to login")
-          router.replace("/login?next=/dashboard")
-          return
+        // If no user provided, check current auth state
+        if (!user) {
+          const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+          
+          if (authError || !currentUser) {
+            console.log("No authenticated user, redirecting to login")
+            router.replace("/login?next=/dashboard")
+            return
+          }
+          user = currentUser
         }
 
         console.log("=== DASHBOARD DEBUG ===")
@@ -257,7 +260,48 @@ function DashboardPageContent() {
       }
     }
 
+    // Initial data fetch
     fetchDashboardData()
+
+    // Set up real-time auth state listener for immediate updates
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("=== AUTH STATE CHANGE ===")
+        console.log("Event:", event)
+        console.log("Session:", session?.user?.id)
+
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          console.log("User signed out or no session, redirecting to login")
+          setIsLoading(false)
+          setDashboardData(null)
+          setError(null)
+          router.replace("/login?next=/dashboard")
+          return
+        }
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          console.log("User signed in or token refreshed, fetching dashboard data")
+          setError(null)
+          setIsLoading(true)
+          await fetchDashboardData(session.user)
+        }
+      }
+    )
+
+    // Set up periodic session validation (every 30 seconds as backup)
+    const sessionCheckInterval = setInterval(async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user) {
+        console.log("Periodic check: No valid session, redirecting to login")
+        router.replace("/login?next=/dashboard")
+      }
+    }, 30000) // Check every 30 seconds
+
+    // Cleanup subscription and interval on unmount
+    return () => {
+      subscription.unsubscribe()
+      clearInterval(sessionCheckInterval)
+    }
   }, [supabase, router, searchParams])
 
   if (isLoading) {

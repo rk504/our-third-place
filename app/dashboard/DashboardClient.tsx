@@ -300,13 +300,6 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <Image
-                      src="/images/user-headshot.jpg"
-                      alt="Avatar"
-                      width={64}
-                      height={64}
-                      className="rounded-full border-4 border-white shadow"
-                    />
                     <div className="flex-1">
                       <p className="text-lg font-semibold text-[#1b1f2c]">{displayName}</p>
                       <p className="text-sm text-gray-600">

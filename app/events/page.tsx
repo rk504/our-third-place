@@ -72,28 +72,19 @@ const eventImagesByType = {
   ]
 }
 
-// Enhanced hash function for better distribution
-const enhancedHash = (str: string): number => {
+// Simple deterministic hash function for stable image assignment
+const simpleHash = (str: string): number => {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i)
     hash = ((hash << 5) - hash) + char
     hash = hash & hash // Convert to 32bit integer
   }
-  // Add extra mixing for better distribution
-  hash ^= hash >>> 16
-  hash *= 0x85ebca6b
-  hash ^= hash >>> 13
-  hash *= 0xc2b2ae35
-  hash ^= hash >>> 16
   return Math.abs(hash)
 }
 
-// Track used images per category to ensure better distribution
-const usedImages = new Map<string, Set<string>>()
-
-// Function to get appropriate image for event with better distribution
-const getEventImage = (event: Event, allEvents?: Event[]) => {
+// Function to get appropriate image for event - deterministic and stable
+const getEventImage = (event: Event) => {
   if (event.image_url) {
     return event.image_url
   }
@@ -111,35 +102,11 @@ const getEventImage = (event: Event, allEvents?: Event[]) => {
   // Get available images for this category
   const categoryImages = eventImagesByType[imageCategory as keyof typeof eventImagesByType] || eventImagesByType.default
   
-  // Initialize tracking for this category if not exists
-  if (!usedImages.has(imageCategory)) {
-    usedImages.set(imageCategory, new Set())
-  }
+  // Use event ID for consistent hash - this ensures same event always gets same image
+  const hash = simpleHash(event.id)
+  const imageIndex = hash % categoryImages.length
   
-  const usedInCategory = usedImages.get(imageCategory)!
-  
-  // If all images in category are used, reset the tracking
-  if (usedInCategory.size >= categoryImages.length) {
-    usedInCategory.clear()
-  }
-  
-  // Use enhanced hash with event ID and title for better uniqueness
-  const hashInput = `${event.id}-${event.title}-${imageCategory}`
-  const hash = enhancedHash(hashInput)
-  
-  // Find an unused image, starting from the hash position
-  let imageIndex = hash % categoryImages.length
-  let attempts = 0
-  
-  while (usedInCategory.has(categoryImages[imageIndex]) && attempts < categoryImages.length) {
-    imageIndex = (imageIndex + 1) % categoryImages.length
-    attempts++
-  }
-  
-  const selectedImage = categoryImages[imageIndex]
-  usedInCategory.add(selectedImage)
-  
-  return selectedImage
+  return categoryImages[imageIndex]
 }
 
 // Price range mappings for display

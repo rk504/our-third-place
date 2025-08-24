@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
       WELCOME10: { type: "percentage", value: 10, description: "10% off first membership" },
       SAVE20: { type: "fixed", value: 20, description: "$20 off" },
       EARLYBIRD: { type: "percentage", value: 15, description: "15% early bird discount" },
-      FRIEND25: { type: "fixed", value: 25, description: "$25 friend referral discount" },
+      FRIEND25: { type: "percentage", value: 25, description: "25% off first month friend referral discount" },
+      WELCOME50: { type: "percentage", value: 50, description: "50% off first membership" },
       KAYNAYPULLS: { type: "percentage", value: 100, description: "You know KayNay, sick!" },
     }
 

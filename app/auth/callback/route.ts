@@ -17,6 +17,10 @@ export async function GET(request: NextRequest) {
       if (type === 'recovery') {
         return NextResponse.redirect(`${origin}/auth/reset-password`)
       }
+      
+      // Clear any pending payment data since user is now verified
+      // (This will be handled on client side)
+      
       // Redirect to welcome page after successful email verification
       return NextResponse.redirect(`${origin}/welcome`)
     }

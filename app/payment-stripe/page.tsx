@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,26 +21,41 @@ const discountCodes = {
 }
 
 function PaymentPageContent() {
-  const searchParams = useSearchParams()
-  
-  // Debug: Log all URL parameters
-  console.log("=== PAYMENT PAGE LOADED ===")
-  console.log("All URL params:", Object.fromEntries(searchParams.entries()))
-  
+  const router = useRouter()
   const [discountCode, setDiscountCode] = useState("")
   const [appliedDiscount, setAppliedDiscount] = useState<any>(null)
   const [discountError, setDiscountError] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [userDataLoaded, setUserDataLoaded] = useState(false)
+  
+  // User data from session storage
+  const [userData, setUserData] = useState<any>(null)
 
-  // Get user data from URL params
-  const userId = searchParams.get("userId") || ""
-  const userCity = searchParams.get("city") || ""
-  const userSubIndustries = searchParams.get("subIndustries") || ""
-  const userFinanceSubIndustries = searchParams.get("financeSubIndustries") || ""
-  const userAdditionalPlaces = searchParams.get("additionalPlaces") || ""
-  const userSlackEmail = searchParams.get("slackEmail") || ""
-  const userHowDidYouHear = searchParams.get("howDidYouHear") || ""
-  const membershipTier = searchParams.get("paymentPlan") || "monthly" // Get membership tier from URL
+  // Load user data from session storage
+  useEffect(() => {
+    const pendingPayment = sessionStorage.getItem('pendingPayment')
+    if (pendingPayment) {
+      const data = JSON.parse(pendingPayment)
+      setUserData(data)
+      setUserDataLoaded(true)
+      console.log("=== PAYMENT PAGE LOADED ===")
+      console.log("User data from session:", data)
+    } else {
+      // No pending payment data, redirect to signup
+      console.log("No pending payment data, redirecting to signup")
+      router.push('/signup')
+    }
+  }, [router])
+
+  // Extract user data with fallbacks
+  const userId = userData?.userId || ""
+  const userCity = userData?.city || ""
+  const userSubIndustries = (userData?.subIndustries || []).join(", ")
+  const userFinanceSubIndustries = (userData?.financeSubIndustries || []).join(", ")
+  const userAdditionalPlaces = (userData?.additionalPlaces || []).join(", ")
+  const userSlackEmail = userData?.email || ""
+  const userHowDidYouHear = userData?.howDidYouHear || ""
+  const membershipTier = userData?.paymentPlan || "monthly"
 
   // Calculate pricing based on membership tier - as this happens after discount codes, not working yet.
   const baseMonthly = 15
@@ -48,7 +63,7 @@ function PaymentPageContent() {
   const additionalMonthly = 5
   const additionalAnnual = 50
 
-  const additionalPlaces = userAdditionalPlaces ? userAdditionalPlaces.split(", ").filter((place) => place) : []
+  const additionalPlaces = userAdditionalPlaces ? userAdditionalPlaces.split(", ").filter((place: string) => place) : []
   const additionalCount = additionalPlaces.length
 
   const monthlyTotal = baseMonthly + additionalCount * additionalMonthly
@@ -137,6 +152,18 @@ function PaymentPageContent() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // Show loading while user data loads
+  if (!userDataLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1b1f2c] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading payment details...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

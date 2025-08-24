@@ -14,6 +14,7 @@ import { ArrowLeft } from "lucide-react"
 import { Footer } from "@/components/footer"
 import { toast } from "sonner"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
 const subIndustries = ["PR", "Marketing", "AdTech", "Communications", "Media Buying", "Media Agencies"]
 
@@ -74,6 +75,7 @@ const locations = [
 const additionalPlaceOptions = ["FINANCE INDUSTRY"]
 
 export default function SignUpPage() {
+  const router = useRouter()
   const [selectedSubIndustries, setSelectedSubIndustries] = useState<string[]>([])
   const [selectedFinanceSubIndustries, setSelectedFinanceSubIndustries] = useState<string[]>([])
   const [additionalPlaces, setAdditionalPlaces] = useState<string[]>([])
@@ -271,23 +273,22 @@ export default function SignUpPage() {
         
         console.log("Account creation successful, redirecting to payment...")
         
-        // Redirect directly to payment page
-        const params = new URLSearchParams({
+        // Store user session data for payment page
+        sessionStorage.setItem('pendingPayment', JSON.stringify({
           userId: authData.user.id,
+          email: formData.slackEmail,
+          name: formData.name,
           city: formData.location,
-          subIndustries: selectedSubIndustries.join(", "),
-          financeSubIndustries: selectedFinanceSubIndustries.join(", "),
-          additionalPlaces: additionalPlaces.join(", "),
-          slackEmail: formData.slackEmail,
-          howDidYouHear: formData.howDidYouHear,
+          company: formData.company,
           paymentPlan: formData.paymentPlan,
-        })
+          subIndustries: selectedSubIndustries,
+          financeSubIndustries: selectedFinanceSubIndustries,
+          additionalPlaces: additionalPlaces,
+          howDidYouHear: formData.howDidYouHear
+        }))
         
-        const paymentUrl = `/payment-stripe?${params.toString()}`
-        console.log("Redirecting to payment:", paymentUrl)
-        
-        // Use window.location.href for redirect to ensure it works
-        window.location.href = paymentUrl
+        // Redirect to payment page (user is now logged in)
+        router.push('/payment-stripe')
       } else {
         throw new Error("Account creation failed - no user returned")
       }
