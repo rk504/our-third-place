@@ -500,7 +500,6 @@ export default function SignUpPage() {
                         <div className="text-2xl font-bold text-[#1b1f2c] mb-1">$15</div>
                         <div className="text-sm text-gray-600 mb-2">per month</div>
                         <h4 className="font-semibold text-gray-900">Monthly</h4>
-                        <p className="text-xs text-gray-500 mt-1">Billed monthly</p>
                       </CardContent>
                     </Card>
 
@@ -519,7 +518,6 @@ export default function SignUpPage() {
                         <div className="text-2xl font-bold text-[#1b1f2c] mb-1">$144</div>
                         <div className="text-sm text-gray-600 mb-2">per year</div>
                         <h4 className="font-semibold text-gray-900">Annual</h4>
-                        <p className="text-xs text-gray-500 mt-1">Billed annually</p>
                       </CardContent>
                     </Card>
                   </div>
