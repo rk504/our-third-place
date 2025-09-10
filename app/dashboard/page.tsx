@@ -73,181 +73,107 @@ function DashboardPageContent() {
   const supabase = createSupabaseBrowserClient()
 
   useEffect(() => {
-    const fetchDashboardData = async (user?: any) => {
+    const fetchDashboardData = async () => {
       try {
-        // If no user provided, check current auth state
-        if (!user) {
-          const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
-          
-          if (authError || !currentUser) {
-            console.log("No authenticated user, redirecting to login")
-            router.replace("/login?next=/dashboard")
-            return
-          }
-          user = currentUser
-        }
-
-        console.log("=== DASHBOARD DEBUG ===")
-        console.log("User ID:", user.id)
-        console.log("User Email:", user.email)
-        console.log("User Created At:", user.created_at)
-
-        // Fetch profile data
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select(`
-            user_id,
-            full_name,
-            bio,
-            linkedin_url,
-            company,
-            role,
-            membership_tier,
-            created_at,
-            additional_places,
-            sub_industries,
-            finance_sub_industries,
-            birthday,
-            instagram_handle,
-            email
-          `)
-          .eq("user_id", user.id)
-          .single()
-
-        console.log("Profile data:", profile)
-        console.log("Profile error:", profileError)
-
-        // Fetch membership data
-        const { data: membership, error: membershipError } = await supabase
-          .from("memberships")
-          .select(`
-            user_id,
-            tier,
-            status,
-            primary_location,
-            additional_places,
-            current_period_end
-          `)
-          .eq("user_id", user.id)
-          .single()
-
-        console.log("Membership data:", membership)
-        console.log("Membership error:", membershipError)
-
-        // Get current date/time for comparison - use exact moment
-        const now = new Date()
-        console.log("Exact current moment:", now)
+        // Check authentication
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
         
-        // First, fetch ALL user's event registrations for debugging
-        const { data: allUserRegistrations, error: allRegError } = await supabase
-          .from("event_registrations")
-          .select("id, status, created_at, event_id, cancelled_at")
-          .eq("user_id", user.id)
-
-        console.log("=== ALL USER REGISTRATIONS DEBUG ===")
-        console.log("All user registrations:", allUserRegistrations)
-        console.log("All registrations error:", allRegError)
-        
-        // Filter for active registrations (registered and not cancelled)
-        const registrations = allUserRegistrations?.filter(reg => 
-          reg.status === 'registered'
-        ) || []
-
-        console.log("Filtered active registrations:", registrations)
-        console.log("Registration count:", registrations.length)
-
-        if (allRegError) {
-          console.error("Failed to fetch registrations:", allRegError)
-          setDashboardData({
-            profile: null,
-            membership: null,
-            upcomingEvents: [],
-            pastEvents: [],
-            totalEventsAttended: 0
-          })
-          setIsLoading(false)
+        if (authError || !user) {
+          router.replace("/login?next=/dashboard")
           return
         }
 
-        // Then fetch the corresponding events
-        const eventIds = registrations.map(reg => reg.event_id)
-        let allRegistrations: EventRegistration[] = []
+        // Fetch all data in parallel
+        const [profileResult, membershipResult, registrationsResult] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select(`
+              user_id,
+              full_name,
+              bio,
+              linkedin_url,
+              company,
+              role,
+              membership_tier,
+              created_at,
+              additional_places,
+              sub_industries,
+              finance_sub_industries,
+              birthday,
+              instagram_handle,
+              email
+            `)
+            .eq("user_id", user.id)
+            .single(),
+          
+          supabase
+            .from("memberships")
+            .select(`
+              user_id,
+              tier,
+              status,
+              primary_location,
+              additional_places,
+              current_period_end
+            `)
+            .eq("user_id", user.id)
+            .single(),
+          
+          supabase
+            .from("event_registrations")
+            .select("id, status, created_at, event_id")
+            .eq("user_id", user.id)
+            .eq("status", "registered")
+        ])
 
-        if (eventIds.length > 0) {
-          const { data: events, error: eventsError } = await supabase
+        const profile = profileResult.data
+        const membership = membershipResult.data
+        const registrations = registrationsResult.data || []
+
+        // Fetch events for registrations
+        let events: Event[] = []
+        if (registrations.length > 0) {
+          const eventIds = registrations.map(reg => reg.event_id)
+          const { data: eventsData } = await supabase
             .from("events")
             .select("*")
             .in("id", eventIds)
-
-          console.log("Events data:", events)
-          console.log("Events error:", eventsError)
-
-          if (events && !eventsError) {
-            // Combine registrations with their corresponding events
-            allRegistrations = registrations.map(registration => {
-              const event = events.find(e => e.id === registration.event_id)
-              return {
-                ...registration,
-                events: event
-              }
-            }).filter(reg => reg.events !== undefined)
-          }
+          events = eventsData || []
         }
 
-        console.log("Combined registrations with events:", allRegistrations)
-        console.log("Current time for comparison:", now)
+        // Combine registrations with events
+        const now = new Date()
+        const allRegistrations: EventRegistration[] = registrations.map(registration => {
+          const event = events.find(e => e.id === registration.event_id)
+          return {
+            ...registration,
+            events: event
+          }
+        }).filter(reg => reg.events !== undefined)
 
-        // Separate into upcoming and past events based on event_date
-        const upcomingEvents = allRegistrations?.filter(registration => {
+        // Separate upcoming and past events
+        const upcomingEvents = allRegistrations.filter(registration => {
           if (!registration.events) return false
-          const eventDate = new Date(registration.events.event_date)
-          const eventTime = eventDate.getTime()
-          const nowTime = now.getTime()
-          const isUpcoming = eventTime >= nowTime
-          console.log(`🔍 Event "${registration.events.title}":`)
-          console.log(`  - Event date string: ${registration.events.event_date}`)
-          console.log(`  - Event Date object: ${eventDate}`)
-          console.log(`  - Event timestamp: ${eventTime}`)
-          console.log(`  - Now timestamp: ${nowTime}`)
-          console.log(`  - Is upcoming: ${isUpcoming}`)
-          console.log(`  - Difference (ms): ${eventTime - nowTime}`)
-          return isUpcoming
-        }) || []
-        const pastEvents = allRegistrations?.filter(registration => {
-          if (!registration.events) return false
-          const eventDate = new Date(registration.events.event_date)
-          return eventDate < now
-        }) || []
-
-        console.log("Upcoming events:", upcomingEvents)
-        console.log("Past events:", pastEvents)
-
-        // Sort and limit
-        upcomingEvents.sort((a, b) => {
+          return new Date(registration.events.event_date) >= now
+        }).sort((a, b) => {
           if (!a.events || !b.events) return 0
           return new Date(a.events.event_date).getTime() - new Date(b.events.event_date).getTime()
-        })
-        pastEvents.sort((a, b) => {
+        }).slice(0, 5)
+
+        const pastEvents = allRegistrations.filter(registration => {
+          if (!registration.events) return false
+          return new Date(registration.events.event_date) < now
+        }).sort((a, b) => {
           if (!a.events || !b.events) return 0
           return new Date(b.events.event_date).getTime() - new Date(a.events.event_date).getTime()
-        })
-
-        // Count total events attended (filter from our already fetched data)
-        const pastRegistrations = allRegistrations?.filter(registration => {
-          if (!registration.events) return false
-          const eventDate = new Date(registration.events.event_date)
-          return eventDate < now
-        }) || []
-        
-        const totalEventsAttended = pastRegistrations.length
-        console.log("Total past events calculated:", totalEventsAttended)
+        }).slice(0, 3)
 
         const data: DashboardData = {
           profile: profile ?? null,
           membership: membership ?? null,
-          upcomingEvents: upcomingEvents.slice(0, 5), // Limit to 5 most recent upcoming
-          pastEvents: pastEvents.slice(0, 3), // Limit to 3 most recent past
-          totalEventsAttended: totalEventsAttended ?? 0
+          upcomingEvents,
+          pastEvents,
+          totalEventsAttended: pastEvents.length
         }
 
         setDashboardData(data)
@@ -260,49 +186,28 @@ function DashboardPageContent() {
       }
     }
 
-    // Initial data fetch
     fetchDashboardData()
 
-    // Set up real-time auth state listener for immediate updates
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("=== AUTH STATE CHANGE ===")
-        console.log("Event:", event)
-        console.log("Session:", session?.user?.id)
-
         if (event === 'SIGNED_OUT' || !session?.user) {
-          console.log("User signed out or no session, redirecting to login")
-          setIsLoading(false)
-          setDashboardData(null)
-          setError(null)
           router.replace("/login?next=/dashboard")
           return
         }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          console.log("User signed in or token refreshed, fetching dashboard data")
           setError(null)
           setIsLoading(true)
-          await fetchDashboardData(session.user)
+          await fetchDashboardData()
         }
       }
     )
 
-    // Set up periodic session validation (every 30 seconds as backup)
-    const sessionCheckInterval = setInterval(async () => {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error || !user) {
-        console.log("Periodic check: No valid session, redirecting to login")
-        router.replace("/login?next=/dashboard")
-      }
-    }, 30000) // Check every 30 seconds
-
-    // Cleanup subscription and interval on unmount
     return () => {
       subscription.unsubscribe()
-      clearInterval(sessionCheckInterval)
     }
-  }, [supabase, router, searchParams])
+  }, [supabase, router])
 
   if (isLoading) {
     return (
