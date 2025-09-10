@@ -116,6 +116,8 @@ export default function HomePage() {
                 width={200}
                 height={200}
                 className="mx-auto"
+                priority={true}
+                style={{ width: "200px", height: "auto" }}
               />
             </div>
 
@@ -156,6 +158,7 @@ export default function HomePage() {
                         width={120}
                         height={120}
                         className="mx-auto rounded-full"
+                        style={{ width: "120px", height: "auto" }}
                       />
                     </div>
                     <h3

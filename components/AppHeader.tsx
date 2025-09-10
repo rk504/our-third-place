@@ -33,7 +33,9 @@ export default function AppHeader() {
               alt="Our Third Place" 
               width={40} 
               height={40} 
-              className="rounded-full" 
+              className="rounded-full"
+              priority={true}
+              style={{ width: "auto", height: "40px" }}
             />
             <span className="text-2xl font-light" style={{ fontFamily: "Josefin Sans, sans-serif" }}>
               OUR THIRD PLACE

@@ -64,27 +64,34 @@ type DashboardData = {
 
 function DashboardPageContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  
   const supabase = createSupabaseBrowserClient()
 
   useEffect(() => {
+    let isMounted = true
+
     const fetchDashboardData = async () => {
+      if (!isMounted) return
+
       try {
-        // Check authentication
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         
         if (authError || !user) {
+          console.log("No authenticated user, redirecting to login")
           router.replace("/login?next=/dashboard")
           return
         }
 
-        // Fetch all data in parallel
-        const [profileResult, membershipResult, registrationsResult] = await Promise.all([
+        console.log("=== DASHBOARD DEBUG ===")
+        console.log("User ID:", user.id)
+        console.log("User Email:", user.email)
+        console.log("User Created At:", user.created_at)
+
+        // Fetch profile and membership data in parallel without timeouts
+        console.log("Starting data fetch...")
+        const [profileResult, membershipResult] = await Promise.all([
           supabase
             .from("profiles")
             .select(`
@@ -117,63 +124,139 @@ function DashboardPageContent() {
               current_period_end
             `)
             .eq("user_id", user.id)
-            .single(),
-          
-          supabase
-            .from("event_registrations")
-            .select("id, status, created_at, event_id")
-            .eq("user_id", user.id)
-            .eq("status", "registered")
+            .single()
         ])
+
+        console.log("Profile result:", profileResult)
+        console.log("Membership result:", membershipResult)
 
         const profile = profileResult.data
         const membership = membershipResult.data
-        const registrations = registrationsResult.data || []
 
-        // Fetch events for registrations
-        let events: Event[] = []
-        if (registrations.length > 0) {
-          const eventIds = registrations.map(reg => reg.event_id)
-          const { data: eventsData } = await supabase
+        if (profileResult.error) {
+          console.error("Profile fetch error:", profileResult.error)
+          throw profileResult.error
+        }
+
+        if (membershipResult.error) {
+          console.error("Membership fetch error:", membershipResult.error)
+          throw membershipResult.error
+        }
+
+        // Get current date/time for comparison - use exact moment
+        const now = new Date()
+        console.log("Exact current moment:", now)
+        
+        // First, fetch ALL user's event registrations for debugging
+        const { data: allUserRegistrations, error: allRegError } = await supabase
+          .from("event_registrations")
+          .select("id, status, created_at, event_id, cancelled_at")
+          .eq("user_id", user.id)
+
+        console.log("=== ALL USER REGISTRATIONS DEBUG ===")
+        console.log("All user registrations:", allUserRegistrations)
+        console.log("All registrations error:", allRegError)
+        
+        // Filter for active registrations (registered and not cancelled)
+        const registrations = allUserRegistrations?.filter(reg => 
+          reg.status === 'registered'
+        ) || []
+
+        console.log("Filtered active registrations:", registrations)
+        console.log("Registration count:", registrations.length)
+
+        if (allRegError) {
+          console.error("Failed to fetch registrations:", allRegError)
+          setDashboardData({
+            profile: null,
+            membership: null,
+            upcomingEvents: [],
+            pastEvents: [],
+            totalEventsAttended: 0
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // Then fetch the corresponding events
+        const eventIds = registrations.map(reg => reg.event_id)
+        let allRegistrations: EventRegistration[] = []
+
+        if (eventIds.length > 0) {
+          const { data: events, error: eventsError } = await supabase
             .from("events")
             .select("*")
             .in("id", eventIds)
-          events = eventsData || []
+
+          console.log("Events data:", events)
+          console.log("Events error:", eventsError)
+
+          if (events && !eventsError) {
+            // Combine registrations with their corresponding events
+            allRegistrations = registrations.map(registration => {
+              const event = events.find(e => e.id === registration.event_id)
+              return {
+                ...registration,
+                events: event
+              }
+            }).filter(reg => reg.events !== undefined)
+          }
         }
 
-        // Combine registrations with events
-        const now = new Date()
-        const allRegistrations: EventRegistration[] = registrations.map(registration => {
-          const event = events.find(e => e.id === registration.event_id)
-          return {
-            ...registration,
-            events: event
-          }
-        }).filter(reg => reg.events !== undefined)
+        console.log("Combined registrations with events:", allRegistrations)
+        console.log("Current time for comparison:", now)
 
-        // Separate upcoming and past events
-        const upcomingEvents = allRegistrations.filter(registration => {
+        // Separate into upcoming and past events based on event_date
+        const upcomingEvents = allRegistrations?.filter(registration => {
           if (!registration.events) return false
-          return new Date(registration.events.event_date) >= now
-        }).sort((a, b) => {
+          const eventDate = new Date(registration.events.event_date)
+          const eventTime = eventDate.getTime()
+          const nowTime = now.getTime()
+          const isUpcoming = eventTime >= nowTime
+          console.log(`🔍 Event "${registration.events.title}":`)
+          console.log(`  - Event date string: ${registration.events.event_date}`)
+          console.log(`  - Event Date object: ${eventDate}`)
+          console.log(`  - Event timestamp: ${eventTime}`)
+          console.log(`  - Now timestamp: ${nowTime}`)
+          console.log(`  - Is upcoming: ${isUpcoming}`)
+          console.log(`  - Difference (ms): ${eventTime - nowTime}`)
+          return isUpcoming
+        }) || []
+        const pastEvents = allRegistrations?.filter(registration => {
+          if (!registration.events) return false
+          const eventDate = new Date(registration.events.event_date)
+          return eventDate < now
+        }) || []
+
+        console.log("Upcoming events:", upcomingEvents)
+        console.log("Past events:", pastEvents)
+
+        // Sort and limit
+        upcomingEvents.sort((a, b) => {
           if (!a.events || !b.events) return 0
           return new Date(a.events.event_date).getTime() - new Date(b.events.event_date).getTime()
-        }).slice(0, 5)
-
-        const pastEvents = allRegistrations.filter(registration => {
-          if (!registration.events) return false
-          return new Date(registration.events.event_date) < now
-        }).sort((a, b) => {
+        })
+        pastEvents.sort((a, b) => {
           if (!a.events || !b.events) return 0
           return new Date(b.events.event_date).getTime() - new Date(a.events.event_date).getTime()
-        }).slice(0, 3)
+        })
+
+        // Count total events attended (filter from our already fetched data)
+        const pastRegistrations = allRegistrations?.filter(registration => {
+          if (!registration.events) return false
+          const eventDate = new Date(registration.events.event_date)
+          return eventDate < now
+        }) || []
+        
+        const totalEventsAttended = pastRegistrations.length
+        console.log("Total past events calculated:", totalEventsAttended)
 
         const data: DashboardData = {
           profile: profile ?? null,
           membership: membership ?? null,
-          upcomingEvents,
-          pastEvents,
-          totalEventsAttended: pastEvents.length
+          upcomingEvents: upcomingEvents.slice(0, 5), // Limit to 5 most recent upcoming
+          pastEvents: pastEvents.slice(0, 3), // Limit to 3 most recent past
+          totalEventsAttended: totalEventsAttended ?? 0
         }
 
         setDashboardData(data)
@@ -182,30 +265,16 @@ function DashboardPageContent() {
         console.error("Dashboard fetch error:", err)
         setError("Failed to load dashboard data")
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchDashboardData()
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session?.user) {
-          router.replace("/login?next=/dashboard")
-          return
-        }
-
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setError(null)
-          setIsLoading(true)
-          await fetchDashboardData()
-        }
-      }
-    )
-
     return () => {
-      subscription.unsubscribe()
+      isMounted = false
     }
   }, [supabase, router])
 
